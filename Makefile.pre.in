@@ -376,6 +376,7 @@ PYTHON_OBJS=	\
 		Python/ast_unparse.o \
 		Python/bltinmodule.o \
 		Python/ceval.o \
+		Python/cinderhooks.o \
 		Python/codecs.o \
 		Python/compile.o \
 		Python/context.o \
