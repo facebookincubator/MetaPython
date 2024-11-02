@@ -10,7 +10,7 @@ extern "C" {
 
 PyAPI_FUNC(PyObject *) _PyGen_yf(PyGenObject *);
 PyAPI_FUNC(PyObject *) _PyCoro_GetAwaitableIter(PyObject *o);
-extern PyObject *_PyAsyncGenValueWrapperNew(PyThreadState *state, PyObject *);
+PyAPI_FUNC(PyObject *) _PyAsyncGenValueWrapperNew(PyThreadState *state, PyObject *);
 
 /* runtime lifecycle */
 
