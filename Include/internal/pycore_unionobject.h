@@ -10,7 +10,7 @@ extern "C" {
 
 extern PyTypeObject _PyUnion_Type;
 #define _PyUnion_Check(op) Py_IS_TYPE((op), &_PyUnion_Type)
-extern PyObject *_Py_union_type_or(PyObject *, PyObject *);
+PyAPI_FUNC(PyObject *) _Py_union_type_or(PyObject *, PyObject *);
 
 #define _PyGenericAlias_Check(op) PyObject_TypeCheck((op), &Py_GenericAliasType)
 extern PyObject *_Py_subs_parameters(PyObject *, PyObject *, PyObject *, PyObject *);
