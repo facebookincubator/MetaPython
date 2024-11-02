@@ -110,7 +110,7 @@ _PyType_GetModuleState(PyTypeObject *type)
 
 
 extern int _PyStaticType_InitBuiltin(PyInterpreterState *, PyTypeObject *type);
-extern static_builtin_state * _PyStaticType_GetState(PyInterpreterState *, PyTypeObject *);
+PyAPI_FUNC(static_builtin_state *) _PyStaticType_GetState(PyInterpreterState *, PyTypeObject *);
 extern void _PyStaticType_ClearWeakRefs(PyInterpreterState *, PyTypeObject *type);
 extern void _PyStaticType_Dealloc(PyInterpreterState *, PyTypeObject *);
 
