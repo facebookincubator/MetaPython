@@ -209,7 +209,7 @@ extern PyObject* _PyCode_GetFreevars(PyCodeObject *);
 extern PyObject* _PyCode_GetCode(PyCodeObject *);
 
 /** API for initializing the line number tables. */
-extern int _PyCode_InitAddressRange(PyCodeObject* co, PyCodeAddressRange *bounds);
+PyAPI_FUNC(int) _PyCode_InitAddressRange(PyCodeObject* co, PyCodeAddressRange *bounds);
 
 /** Out of process API for initializing the location table. */
 extern void _PyLineTable_InitAddressRange(
@@ -219,7 +219,7 @@ extern void _PyLineTable_InitAddressRange(
     PyCodeAddressRange *range);
 
 /** API for traversing the line number table. */
-extern int _PyLineTable_NextAddressRange(PyCodeAddressRange *range);
+PyAPI_FUNC(int) _PyLineTable_NextAddressRange(PyCodeAddressRange *range);
 extern int _PyLineTable_PreviousAddressRange(PyCodeAddressRange *range);
 
 /* Specialization functions */
