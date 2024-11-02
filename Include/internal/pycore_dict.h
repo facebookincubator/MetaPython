@@ -57,7 +57,7 @@ extern PyObject *_PyDict_GetItemKeepLazy(PyObject *, PyObject *);
 
 /* Consumes references to key and value */
 PyAPI_FUNC(int) _PyDict_SetItem_Take2(PyDictObject *op, PyObject *key, PyObject *value);
-extern int _PyObjectDict_SetItem(PyTypeObject *tp, PyObject **dictptr, PyObject *name, PyObject *value);
+PyAPI_FUNC(int) _PyObjectDict_SetItem(PyTypeObject *tp, PyObject **dictptr, PyObject *name, PyObject *value);
 
 extern PyObject *_PyDict_Pop_KnownHash(PyObject *, PyObject *, Py_hash_t, PyObject *);
 
@@ -160,7 +160,7 @@ static inline PyDictUnicodeEntry* DK_UNICODE_ENTRIES(PyDictKeysObject *dk) {
 #define DICT_NEXT_VERSION(INTERP) \
     ((INTERP)->dict_state.global_version += DICT_VERSION_INCREMENT)
 
-void
+PyAPI_FUNC(void)
 _PyDict_SendEvent(int watcher_bits,
                   PyDict_WatchEvent event,
                   PyDictObject *mp,
