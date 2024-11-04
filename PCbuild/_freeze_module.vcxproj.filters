@@ -79,6 +79,9 @@
     <ClCompile Include="..\Python\ceval.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Python\cinderhooks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\Objects\classobject.c">
       <Filter>Source Files</Filter>
     </ClCompile>

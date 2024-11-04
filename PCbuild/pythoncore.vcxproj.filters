@@ -51,6 +51,12 @@
     <ClInclude Include="..\Include\bytesobject.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\cinder\ci_api.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\cinder\hooks.h">
+      <Filter>Include</Filter>
+    </ClInclude>
     <ClInclude Include="..\Include\ceval.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -1128,6 +1134,9 @@
       <Filter>Python</Filter>
     </ClCompile>
     <ClCompile Include="..\Python\ceval.c">
+      <Filter>Python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Python\cinderhooks.c">
       <Filter>Python</Filter>
     </ClCompile>
     <ClCompile Include="..\Python\codecs.c">
