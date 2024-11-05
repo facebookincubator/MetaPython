@@ -1216,7 +1216,7 @@
             STAT_INC(SEND, hit);
             if ((frame->owner == FRAME_OWNED_BY_GENERATOR) &&
                 (frame->f_code->co_flags & (CO_COROUTINE | CO_ASYNC_GENERATOR))) {
-                Ci_PyAwaitable_SetAwaiter(receiver, (PyObject *)gen);
+                Ci_PyAwaitable_SetAwaiter(receiver, (PyObject *) _PyFrame_GetGenerator(frame));
             }
             _PyInterpreterFrame *gen_frame = (_PyInterpreterFrame *)gen->gi_iframe;
             frame->return_offset = oparg;
