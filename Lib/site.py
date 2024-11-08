@@ -600,25 +600,6 @@ def execusercustomize():
                 (err.__class__.__name__, err))
 
 
-def init_cinder():
-    import importlib.util
-
-    # `cinderx` is the Python module in fbcode/cinderx/PythonLib which wraps the
-    # `_cinderx` C++ extension in fbcode/cinderx/_cinderx.cpp.  Both need to be
-    # available to load CinderX.
-    if (
-        importlib.util.find_spec("cinderx") is None
-        or importlib.util.find_spec("_cinderx") is None
-    ):
-        return
-    try:
-        import cinderx
-
-        cinderx.init()
-    except Exception as e:
-        raise RuntimeError("Failed to initialize CinderX module") from e
-
-
 def main():
     """Add standard site-specific directories to the module search path.
 
@@ -644,10 +625,15 @@ def main():
     sethelper()
     if not sys.flags.isolated:
         enablerlcompleter()
-    # Do not attempt to initialize cinder *by default*, as it's not relevant
-    # for regular MetaPython users (and cinderx is not even available).
-    # This gets enabled at build-time when cinderx is enabled (see D62604340).
-    # init_cinder()
+    # If we've been built with CinderX support there will be an init_cinderx.py
+    # included in the default module search path. In this case we import it
+    # which will have the side-effect of initializing CinderX. If this module
+    # is missing then we weren't build with CinderX so ignoring the import
+    # error is fine.
+    try:
+        import init_cinderx
+    except ImportError:
+        pass
     execsitecustomize()
     if ENABLE_USER_SITE:
         execusercustomize()
