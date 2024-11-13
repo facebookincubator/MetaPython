@@ -8,19 +8,18 @@ if self._lazy_imports:
 import importlib
 
 importlib.set_lazy_imports(eager=[
-    "test.lazyimports.data.metasyntactic.foo",
-    "test.lazyimports.data.metasyntactic.waldo",
+    "test.lazyimports.data.metasyntactic.foo.bar",
     "test.lazyimports.data.metasyntactic.plugh.Plugh",
 ])
 
 import test.lazyimports.data.metasyntactic.foo as foo
-self.assertFalse(importlib.is_lazy_import(globals(), "foo"))  # should be eager
+self.assertTrue(importlib.is_lazy_import(globals(), "foo"))  # should be lazy
 
 from test.lazyimports.data.metasyntactic.foo import bar
-self.assertFalse(importlib.is_lazy_import(globals(), "bar"))  # maybe this should have been lazy?
+self.assertFalse(importlib.is_lazy_import(globals(), "bar"))  # listed in the eager list, so should not be lazy
 
-from test.lazyimports.data.metasyntactic.waldo import Waldo
-self.assertFalse(importlib.is_lazy_import(globals(), "Waldo"))  # maybe this should have been lazy?
+from test.lazyimports.data.metasyntactic.foo.bar import Bar
+self.assertTrue(importlib.is_lazy_import(globals(), "Bar"))  # should be lazy
 
 import test.lazyimports.data.metasyntactic.waldo.fred as fred
 self.assertTrue(importlib.is_lazy_import(globals(), "fred"))  # this should be lazy
@@ -29,7 +28,7 @@ from test.lazyimports.data.metasyntactic.waldo.fred import Fred
 self.assertTrue(importlib.is_lazy_import(globals(), "Fred"))  # this should be lazy
 
 from test.lazyimports.data.metasyntactic.waldo import fred
-self.assertFalse(importlib.is_lazy_import(globals(), "fred"))  # maybe this should have been lazy?
+self.assertTrue(importlib.is_lazy_import(globals(), "fred"))  # this should be lazy
 
 import test.lazyimports.data.metasyntactic.plugh as plugh
 self.assertTrue(importlib.is_lazy_import(globals(), "plugh"))  # this should be lazy

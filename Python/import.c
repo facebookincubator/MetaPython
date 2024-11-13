@@ -2886,17 +2886,10 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
     PyObject *lazy_submodules;
 
     if (tstate->interp->eager_imports != NULL) {
-        int found = PySequence_Contains(tstate->interp->eager_imports, name);
-        if (found < 0) {
-            goto error;
-        }
-        if (found) {
-            ret = 0; /* If the module is flagged as eager import, load eagerly */
-            goto end;
-        }
+        Py_ssize_t size = 0;
         if (fromlist != NULL && fromlist != Py_None) {
             assert(PyTuple_CheckExact(fromlist));
-            Py_ssize_t size = PyTuple_GET_SIZE(fromlist);
+            size = PyTuple_GET_SIZE(fromlist);
             for (Py_ssize_t i = 0; i < size; ++i) {
                 PyObject* item = PyTuple_GET_ITEM(fromlist, i);
                 assert(PyUnicode_Check(item));
@@ -2904,7 +2897,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                 if (from_name == NULL) {
                     goto error;
                 }
-                found = PySequence_Contains(tstate->interp->eager_imports, from_name);
+                int found = PySequence_Contains(tstate->interp->eager_imports, from_name);
                 Py_DECREF(from_name);
                 if (found < 0) {
                     goto error;
@@ -2913,6 +2906,16 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                     ret = 0; /* If the module is flagged as eager import, load eagerly */
                     goto end;
                 }
+            }
+        }
+        if (size == 0) {
+            int found = PySequence_Contains(tstate->interp->eager_imports, name);
+            if (found < 0) {
+                goto error;
+            }
+            if (found) {
+                ret = 0; /* If the module is flagged as eager import, load eagerly */
+                goto end;
             }
         }
     }
