@@ -157,10 +157,10 @@ typedef struct {
 CiAPI_DATA(int) lltrace;
 
 CiAPI_FUNC(int) Cix_eval_frame_handle_pending(PyThreadState *tstate);
-CiAPI_FUNC(PyObject *)
-    Cix_special_lookup(PyThreadState *tstate, PyObject *o, _Py_Identifier *id);
 CiAPI_FUNC(void) Cix_format_kwargs_error(PyThreadState *tstate, PyObject *func,
                                          PyObject *kwargs);
+CiAPI_FUNC(PyObject *)
+    Cix_special_lookup(PyThreadState *tstate, PyObject *o, _Py_Identifier *id);
 CiAPI_FUNC(void)
     Cix_format_awaitable_error(PyThreadState *tstate, PyTypeObject *type,
                                int prevprevopcode, int prevopcode);
