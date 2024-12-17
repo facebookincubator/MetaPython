@@ -1072,6 +1072,37 @@ gh_119213_getargs_impl(PyObject *module, PyObject *spam)
     return Py_NewRef(spam);
 }
 
+static PyObject *
+compile_perf_trampoline_entry(PyObject *self, PyObject *args)
+{
+    PyObject *co;
+    if (!PyArg_ParseTuple(args, "O!", &PyCode_Type, &co)) {
+        return NULL;
+    }
+    int ret = PyUnstable_PerfTrampoline_CompileCode((PyCodeObject *)co);
+    if (ret != 0) {
+        PyErr_SetString(PyExc_AssertionError, "Failed to compile trampoline");
+        return NULL;
+    }
+    return PyLong_FromLong(ret);
+}
+
+static PyObject *
+perf_trampoline_set_persist_after_fork(PyObject *self, PyObject *args)
+{
+    int enable;
+    if (!PyArg_ParseTuple(args, "i", &enable)) {
+        return NULL;
+    }
+    int ret = PyUnstable_PerfTrampoline_SetPersistAfterFork(enable);
+    if (ret == 0) {
+        PyErr_SetString(PyExc_AssertionError, "Failed to set persist_after_fork");
+        return NULL;
+    }
+    return PyLong_FromLong(ret);
+}
+
+
 
 static PyMethodDef module_functions[] = {
     {"get_configs", get_configs, METH_NOARGS},
@@ -1106,6 +1137,8 @@ static PyMethodDef module_functions[] = {
      METH_VARARGS | METH_KEYWORDS},
     {"pending_identify", pending_identify, METH_VARARGS, NULL},
     GH_119213_GETARGS_METHODDEF
+    {"compile_perf_trampoline_entry", compile_perf_trampoline_entry, METH_VARARGS},
+    {"perf_trampoline_set_persist_after_fork", perf_trampoline_set_persist_after_fork, METH_VARARGS},
     {NULL, NULL} /* sentinel */
 };
 
