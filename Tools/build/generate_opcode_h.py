@@ -168,6 +168,9 @@ def main(opcode_py, outfile='Include/opcode.h',
         iobj.write("\nconst uint8_t _PyOpcode_Deopt[256] = {\n")
         for opt, deopt in sorted(deoptcodes.items()):
             iobj.write(f"    [{opt}] = {deopt},\n")
+        for i, name in enumerate(opname):
+            if not used[i]:
+                iobj.write(f"    [{i}] = {i},\n")
         iobj.write("};\n")
         iobj.write("#endif   // NEED_OPCODE_TABLES\n")
 
