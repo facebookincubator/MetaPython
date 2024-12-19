@@ -206,21 +206,19 @@ class GeneratorTest(unittest.TestCase):
         finally:
             gc.set_threshold(*thresholds)
 
-    # TODO(T209747648) - These should just be enabled as coroutines and
-    # async-generators work.
-    #
+    # TODO(T209747648) - This should be enabled when async-generators work.
     # def test_ag_frame_f_back(self):
     #     async def f():
     #         yield
     #     ag = f()
     #     self.assertIsNone(ag.ag_frame.f_back)
-    #
-    # def test_cr_frame_f_back(self):
-    #     async def f():
-    #         pass
-    #     cr = f()
-    #     self.assertIsNone(cr.cr_frame.f_back)
-    #     cr.close()  # Suppress RuntimeWarning.
+
+    def test_cr_frame_f_back(self):
+        async def f():
+            pass
+        cr = f()
+        self.assertIsNone(cr.cr_frame.f_back)
+        cr.close()  # Suppress RuntimeWarning.
 
     def test_gi_frame_f_back(self):
         def f():
