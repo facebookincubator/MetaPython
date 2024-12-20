@@ -1678,6 +1678,9 @@ specialize_py_call(PyFunctionObject *func, _Py_CODEUNIT *instr, int nargs,
         SPECIALIZATION_FAIL(CALL, SPEC_FAIL_CALL_PEP_523);
         return -1;
     }
+    if (func->vectorcall != _PyFunction_Vectorcall) {
+        return -1;
+    }
     if (kwnames) {
         SPECIALIZATION_FAIL(CALL, SPEC_FAIL_CALL_KWNAMES);
         return -1;
