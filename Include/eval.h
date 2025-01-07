@@ -24,7 +24,7 @@ CiAPI_DATA(int) _PyEval_LazyImportsEnabled;
 
 CiAPI_FUNC(PyObject *) Ci_PyFunction_CallStatic(PyFunctionObject *func,
                                  PyObject* const* args,
-                                 Py_ssize_t nargsf,
+                                 size_t nargsf,
                                  PyObject *kwnames);
 
 #endif
