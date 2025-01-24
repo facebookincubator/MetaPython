@@ -6,12 +6,6 @@ env:
   REGISTRY: ghcr.io
   CINDER_BUILD_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cinder-build
   CINDER_RUNTIME_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cinder-runtime
-  CINDER_EXPLORER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/cinder-explorer
-  CINDER_EXPLORER_AWS_REGION: us-west-1
-  CINDER_EXPLORER_ECS_CLUSTER: trycinder-test-Cluster-YNmjygvkMeeY
-  CINDER_EXPLORER_ECS_SERVICE: trycinder-test-webserver-Service-vvi2qdzv9lgX
-  CINDER_EXPLORER_AUTO_DEPLOY_REPO: facebookincubator/cinder
-  CINDER_EXPLORER_AUTO_DEPLOY_BRANCH: ${{ format('refs/heads/{0}', github.event.repository.default_branch) }}
 
 jobs:
   cinder-oss-build-and-test-job:
@@ -71,48 +65,3 @@ jobs:
           # the build should be efficient, reusing the build image layers from a previous step
           target: runtime
           file: .github/workflows/cinder/Dockerfile
-
-      # Also build and push Cinder Explorer image if tests passed
-      - name: Extract metadata for Cinder Explorer app Docker image push
-        id: explorermeta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.CINDER_EXPLORER_IMAGE_NAME }}
-          # publish the explorer image using the sha and branch name
-          # if this is the default branch, we also publish the image as "latest"
-          tags: |
-            type=sha,prefix={{branch}}.
-            type=ref,event=branch
-            type=raw,value=latest,enable=${{ github.ref == env.CINDER_EXPLORER_AUTO_DEPLOY_BRANCH }}
-      - name: Build and Push Cinder Explorer Docker Images
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.explorermeta.outputs.tags }}
-          labels: ${{ steps.explorermeta.outputs.labels }}
-          target: explorer
-          file: .github/workflows/cinder/Dockerfile
-
-      # Redeploy Cinder Explorer to AWS ECS using the new Cinder Explorer image (built above)
-      # by forcing a new deployment that forces Fargate to pull the latest version of the image
-      # (run auto-deploy only on the default branch of the main repo (not forks))
-      - name: Configure AWS credentials
-        if: |
-          github.repository == env.CINDER_EXPLORER_AUTO_DEPLOY_REPO &&
-          github.ref == env.CINDER_EXPLORER_AUTO_DEPLOY_BRANCH
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          role-to-assume: ${{ secrets.AWS_CINDER_EXPLORER_BOT_DEPLOYER_ARN }}
-          role-session-name: UpdateCinderExplorer
-          aws-region: ${{ env.CINDER_EXPLORER_AWS_REGION }}
-      - name: Deploy Cinder Explorer to ECS
-        if: |
-          github.repository == env.CINDER_EXPLORER_AUTO_DEPLOY_REPO &&
-          github.ref == env.CINDER_EXPLORER_AUTO_DEPLOY_BRANCH
-        run: |
-          aws ecs update-service \
-            --region ${{ env.CINDER_EXPLORER_AWS_REGION }} \
-            --cluster ${{ env.CINDER_EXPLORER_ECS_CLUSTER }} \
-            --service ${{ env.CINDER_EXPLORER_ECS_SERVICE }} \
-            --force-new-deployment

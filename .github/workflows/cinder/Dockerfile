@@ -32,15 +32,3 @@ WORKDIR /
 FROM fedora:32 as runtime
 COPY --from=install /cinder /cinder
 ENTRYPOINT ["/cinder/bin/python3"]
-
-# Cinder Explorer
-FROM runtime as explorer
-COPY --from=build /cinder/src/Tools /cinder/Tools
-# Run server as appuser
-RUN groupadd -g 1001 appuser
-RUN useradd --create-home --shell /bin/bash --gid appuser appuser
-USER appuser
-WORKDIR /home/appuser
-EXPOSE 8000
-ENTRYPOINT ["/cinder/bin/python3", "/cinder/Tools/scripts/ir_viz/gen.py"]
-CMD ["explorer", "--runtime", "/cinder/bin/python3", "--port", "8000"]
