@@ -1182,16 +1182,27 @@ start:
             }
             return DKIX_EMPTY;
         }
-        /* If the dict hasn't mutated, update resolved_value */
-        if (dk == mp->ma_keys && kind == dk->dk_kind) {
-            if (kind != DICT_KEYS_GENERAL
-                ? DK_UNICODE_ENTRIES(dk)[ix].me_key == startkey
-                : DK_ENTRIES(dk)[ix].me_key == startkey) {
-                if (*value_ptr == value) {
-                    Py_DECREF(*value_ptr);
-                    *value_ptr = resolved_value;
-                }
-            }
+        /* If the dict hasn't mutated, update resolved_value, otherwise
+         * retry the lookup */
+        if (dk != mp->ma_keys || kind != dk->dk_kind) {
+            Py_DECREF(resolved_value);
+            goto start;
+        }
+
+        PyObject *key = kind != DICT_KEYS_GENERAL
+            ? DK_UNICODE_ENTRIES(dk)[ix].me_key : DK_ENTRIES(dk)[ix].me_key;
+        if (key != startkey) {
+            Py_DECREF(resolved_value);
+            goto start;
+        }
+
+        if (*value_ptr == value) {
+            Py_DECREF(*value_ptr);
+            *value_ptr = resolved_value;
+        } else {
+            // Just the value was replaced, so return the new value.
+            Py_DECREF(resolved_value);
+            resolved_value = *value_ptr;
         }
         value = resolved_value;
     }
