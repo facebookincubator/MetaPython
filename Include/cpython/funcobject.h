@@ -140,7 +140,7 @@ PyAPI_FUNC(PyObject *) PyStaticMethod_New(PyObject *);
     V(MODIFY_CODE)               \
     V(MODIFY_DEFAULTS)           \
     V(MODIFY_KWDEFAULTS)         \
-    V(MODIFY_QUALNAME)    
+    V(MODIFY_QUALNAME)
 
 typedef enum {
     #define PY_DEF_EVENT(EVENT) PyFunction_EVENT_##EVENT,
