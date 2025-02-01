@@ -7,20 +7,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-    - 'main'
-    - '3.12'
-    - '3.11'
-    - '3.10'
-    - '3.9'
-    - '3.8'
+    - 'meta/3.12'
   pull_request:
     branches:
-    - 'main'
-    - '3.12'
-    - '3.11'
-    - '3.10'
-    - '3.9'
-    - '3.8'
+    - 'meta/3.12'
 
 permissions:
   contents: read
