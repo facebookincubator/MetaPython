@@ -76,5 +76,5 @@ jobs:
     - name: Tests
       working-directory: ${{ env.CPYTHON_BUILDDIR }}
       # Meta-specific exclusions:
-      # test_email, test_lib2to3: GitHub export messes up EOL style, which interferes with these tests
-      run: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu -x test_email test_lib2to3"
+      # test_email, test_lib2to3, test_xml_etree: GitHub export messes up EOL style, which interferes with these tests
+      run: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu -x test_email test_lib2to3 test_xml_etree test_xml_etree_c"
