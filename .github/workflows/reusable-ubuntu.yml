@@ -71,6 +71,10 @@ jobs:
     - name: Remount sources writable for tests
       # some tests write to srcdir, lack of pyc files slows down testing
       run: sudo mount $CPYTHON_RO_SRCDIR -oremount,rw
+    - name: Delete init_cinderx from the source tree
+      run: rm Lib/init_cinderx.py
     - name: Tests
       working-directory: ${{ env.CPYTHON_BUILDDIR }}
-      run: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu"
+      # Meta-specific exclusions:
+      # test_email, test_lib2to3: GitHub export messes up EOL style, which interferes with these tests
+      run: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu -x test_email test_lib2to3"
