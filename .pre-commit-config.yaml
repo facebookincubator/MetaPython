@@ -6,6 +6,9 @@ repos:
         name: Run Ruff on Lib/test/
         args: [--exit-non-zero-on-fix]
         files: ^Lib/test/
+        # exclude set_lazy_imports_eager.py from ruff check
+        # it has an intentional import redefinition as part of the lazy imports test
+        exclude: /set_lazy_imports_eager.py$
       - id: ruff
         name: Run Ruff on Argument Clinic
         args: [--exit-non-zero-on-fix, --config=Tools/clinic/.ruff.toml]
