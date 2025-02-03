@@ -2141,6 +2141,27 @@ TESTSUBDIRS=	idlelib/idle_test \
 		test/dtracedata \
 		test/encoded_modules \
 		test/imghdrdata \
+		test/lazyimports \
+		test/lazyimports/circular_import \
+		test/lazyimports/cycle_with_load_global \
+		test/lazyimports/data \
+		test/lazyimports/data/excluding \
+		test/lazyimports/data/metasyntactic \
+		test/lazyimports/data/metasyntactic/foo \
+		test/lazyimports/data/metasyntactic/foo/ack \
+		test/lazyimports/data/metasyntactic/foo/bar \
+		test/lazyimports/data/metasyntactic/foo/bar/baz \
+		test/lazyimports/data/metasyntactic/foo/bar/baz/qux \
+		test/lazyimports/data/metasyntactic/foo/bar/thud \
+		test/lazyimports/data/metasyntactic/plugh \
+		test/lazyimports/data/metasyntactic/waldo \
+		test/lazyimports/data/metasyntactic/waldo/fred \
+		test/lazyimports/data/module_same_name_var_order1 \
+		test/lazyimports/data/module_same_name_var_order2 \
+		test/lazyimports/data/versioned \
+		test/lazyimports/deferred_resolve_failure \
+		test/lazyimports/deferred_resolve_failure/utilities \
+		test/lazyimports/dict_changes_when_loading \
 		test/leakers \
 		test/libregrtest \
 		test/regrtestdata \
