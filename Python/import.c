@@ -4592,39 +4592,54 @@ _imp__set_lazy_imports_in_module_impl(PyObject *module, PyObject *enabled)
 }
 
 static int
-is_lazy_imports_active(PyInterpreterState *interp, _PyInterpreterFrame *frame)
+is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
 {
-    int lazy_imports = interp->lazy_imports;
-    if (lazy_imports) {
-        if (PyDict_CheckExact(frame->f_globals)) {
-            PyObject *lazy_imports_enabled  = PyDict_GetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__));
-            if (lazy_imports_enabled != NULL) {
-                if (PyObject_IsTrue(lazy_imports_enabled) != 1) {
-                    lazy_imports = 0;
-                }
-            } else {
-                PyObject *modname  = PyDict_GetItem(frame->f_globals, &_Py_ID(__name__));
-                if (modname != NULL && modname != Py_None) {
-                    PyObject *filter = interp->excluding_modules;
-                    if (filter != NULL && PySequence_Contains(filter, modname)) {
-                        lazy_imports = 0;  /* Module explicitly excluded from lazy importing */
-                    }
-                    PyDict_SetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__), lazy_imports ? Py_True : Py_False);
-                } else {
-                    lazy_imports = 0;
-                }
-            }
-        } else {
-            lazy_imports = 0;
+    int lazy_imports = tstate->interp->lazy_imports;
+    assert(lazy_imports != -1);
+    if (!lazy_imports) {
+        return 0;
+    }
+
+    PyObject *filter = tstate->interp->excluding_modules;
+    if (filter == NULL) {
+        return 1;
+    }
+
+    if (!PyDict_CheckExact(frame->f_globals)) {
+        return 0;
+    }
+
+    PyObject *modname  = PyDict_GetItem(frame->f_globals, &_Py_ID(__name__));
+    if (modname == NULL || Py_IsNone(modname)) {
+        return 0;
+    }
+
+    PyObject *lazy_imports_enabled  = PyDict_GetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__));
+    if (lazy_imports_enabled == NULL) {
+        int eager = PySequence_Contains(filter, modname);
+        if (eager == -1) {
+            _PyErr_Clear(tstate);
+            return 0;
+        }
+        lazy_imports = eager ? 0 : 1;
+        if (PyDict_SetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__), lazy_imports ? Py_True : Py_False) == -1) {
+            _PyErr_Clear(tstate);
+        }
+    } else {
+        lazy_imports = PyObject_IsTrue(lazy_imports_enabled);
+        if (lazy_imports == -1) {
+            _PyErr_Clear(tstate);
+            return 0;
         }
     }
+
     return lazy_imports;
 }
 
 int
 _PyImport_IsLazyImportsActive(PyThreadState *tstate)
 {
-    return is_lazy_imports_active(tstate->interp, tstate->cframe->current_frame);
+    return is_lazy_imports_active(tstate, tstate->cframe->current_frame);
 }
 
 int
@@ -4640,7 +4655,7 @@ PyImport_IsLazyImportsEnabled(void)
         assert(0);
         return 0;
     }
-    return is_lazy_imports_active(tstate->interp, frame);
+    return is_lazy_imports_active(tstate, frame);
 }
 
 /*[clinic input]
