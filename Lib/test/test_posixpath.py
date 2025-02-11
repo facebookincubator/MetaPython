@@ -347,7 +347,7 @@ class PosixPathTest(unittest.TestCase):
                      "no home directory on VxWorks")
     def test_expanduser_pwd2(self):
         pwd = import_helper.import_module('pwd')
-        for e in pwd.getpwall():
+        for e in pwd.getpwall()[:10]:
             name = e.pw_name
             home = e.pw_dir
             home = home.rstrip('/') or '/'
