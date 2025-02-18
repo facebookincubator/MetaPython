@@ -1401,7 +1401,6 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
     MAINTAIN_TRACKING(mp, key, value);
 
     if (ix == DKIX_EMPTY) {
-        /* Insert into new slot. */
         assert(old_value == NULL);
         if (mp->ma_keys->dk_usable <= 0) {
             /* Need to resize. */
@@ -1411,6 +1410,7 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
 
         uint64_t new_version = _PyDict_NotifyEvent(
                 interp, PyDict_EVENT_ADDED, mp, key, value);
+        /* Insert into new slot. */
         mp->ma_keys->dk_version = 0;
 
         Py_ssize_t hashpos = find_empty_slot(mp->ma_keys, hash);
@@ -4011,8 +4011,8 @@ PyDoc_STRVAR(sizeof__doc__,
 "D.__sizeof__() -> size of D in memory, in bytes");
 
 PyDoc_STRVAR(update__doc__,
-"D.update([E, ]**F) -> None.  Update D from dict/iterable E and F.\n\
-If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]\n\
+"D.update([E, ]**F) -> None.  Update D from mapping/iterable E and F.\n\
+If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]\n\
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v\n\
 In either case, this is followed by: for k in F:  D[k] = F[k]");
 
@@ -4307,7 +4307,8 @@ PyDict_SetItemString(PyObject *v, const char *key, PyObject *item)
     kv = PyUnicode_FromString(key);
     if (kv == NULL)
         return -1;
-    PyUnicode_InternInPlace(&kv); /* XXX Should we really? */
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    _PyUnicode_InternImmortal(interp, &kv); /* XXX Should we really? */
     err = PyDict_SetItem(v, kv, item);
     Py_DECREF(kv);
     return err;

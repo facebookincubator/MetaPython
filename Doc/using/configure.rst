@@ -14,8 +14,8 @@ Features required to build CPython:
   <https://en.wikipedia.org/wiki/C11_(C_standard_revision)#Optional_features>`_
   are not required.
 
-* Support for `IEEE 754 <https://en.wikipedia.org/wiki/IEEE_754>`_ floating
-  point numbers and `floating point Not-a-Number (NaN)
+* Support for `IEEE 754 <https://en.wikipedia.org/wiki/IEEE_754>`_
+  floating-point numbers and `floating-point Not-a-Number (NaN)
   <https://en.wikipedia.org/wiki/NaN#Floating_point>`_.
 
 * Support for threads.
@@ -459,7 +459,7 @@ Debug options
    Effects:
 
    * Define the ``Py_TRACE_REFS`` macro.
-   * Add :func:`!sys.getobjects` function.
+   * Add :func:`sys.getobjects` function.
    * Add :envvar:`PYTHONDUMPREFS` environment variable.
 
    This build is not ABI compatible with release build (default build) or debug

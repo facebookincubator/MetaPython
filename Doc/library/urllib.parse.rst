@@ -173,7 +173,7 @@ or on combining URL components into a URL string.
       Added IPv6 URL parsing capabilities.
 
    .. versionchanged:: 3.3
-      The fragment is now parsed for all URL schemes (unless *allow_fragment* is
+      The fragment is now parsed for all URL schemes (unless *allow_fragments* is
       false), in accordance with :rfc:`3986`.  Previously, an allowlist of
       schemes that support fragments existed.
 
@@ -394,6 +394,15 @@ or on combining URL components into a URL string.
 
       If you do not want that behavior, preprocess the *url* with :func:`urlsplit` and
       :func:`urlunsplit`, removing possible *scheme* and *netloc* parts.
+
+   .. warning::
+
+      Because an absolute URL may be passed as the ``url`` parameter, it is
+      generally **not secure** to use ``urljoin`` with an attacker-controlled
+      ``url``. For example in,
+      ``urljoin("https://website.com/users/", username)``, if ``username`` can
+      contain an absolute URL, the result of ``urljoin`` will be the absolute
+      URL.
 
 
    .. versionchanged:: 3.5
