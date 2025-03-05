@@ -1671,18 +1671,6 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
         }
     }
 
-    PyObject *existing = import_get_module(tstate, name);
-    if (existing != NULL) {
-        // If the module is already loaded we don't need to do the below, we should
-        // have already recorded the module as a lazy module.  Even if we've loaded
-        // the module previously we may return 1 (meaning load lazily), but that's
-        // because we want to continue processing the names in the fromlist lazily.
-        // If we return 0 (meaning load eagerly) we'll end up loading the fromlist
-        // eagerly too.
-        Py_DECREF(existing);
-        goto end;
-    }
-
     lazy_submodules = PyDict_GetItemWithError(lazy_modules, name);
     if (lazy_submodules == NULL) {
         if (PyErr_Occurred()) {
