@@ -4,6 +4,15 @@
 
 PyMODINIT_FUNC PyInit__imp(void);
 
+
+// START META PATCH (expose C API to call a module init function for statically linked extensions)
+PyAPI_FUNC(PyObject *) _Ci_PyImport_CallInitFuncWithContext(
+    const char* context, PyObject* (*initfunc)(void));
+
+
+PyAPI_FUNC(int) _Ci_PyImport_FinishSinglePhaseExtension(
+    int *tstate, PyObject *mod, void* cached, PyObject *name, PyObject *modules);
+// END META PATCH
 struct _inittab {
     const char *name;           /* ASCII encoded string */
     PyObject* (*initfunc)(void);

@@ -3400,7 +3400,26 @@ PyImport_ImportModule(const char *name)
     Py_DECREF(pname);
     return result;
 }
+// START META PATCH
+int
+_Ci_PyImport_FinishSinglePhaseExtension(
+    int *tstate, PyObject *mod, void *cached, PyObject *name, PyObject *modules)
+{
+    return finish_singlephase_extension(tstate, mod, cached, name, modules);
+}
 
+PyObject *
+_Ci_PyImport_CallInitFuncWithContext(const char* context, PyObject* (*initfunc)(void))
+{
+    const char *oldcontext;
+    PyObject* mod;
+    oldcontext = _PyImport_SwapPackageContext(context);
+    mod = initfunc();
+    _PyImport_SwapPackageContext(oldcontext);
+    return mod;
+}
+
+// END META PATCH
 
 /* Import a module without blocking
  *
