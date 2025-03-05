@@ -733,7 +733,6 @@ func_new_impl(PyTypeObject *type, PyCodeObject *code, PyObject *globals,
 static int
 func_clear(PyFunctionObject *op)
 {
-    Py_CLEAR(op->func_code);
     Py_CLEAR(op->func_globals);
     Py_CLEAR(op->func_builtins);
     Py_CLEAR(op->func_name);
@@ -764,6 +763,8 @@ func_dealloc(PyFunctionObject *op)
         PyObject_ClearWeakRefs((PyObject *) op);
     }
     (void)func_clear(op);
+    // These aren't cleared by func_clear().
+    Py_CLEAR(op->func_code);
     PyObject_GC_Del(op);
 }
 
