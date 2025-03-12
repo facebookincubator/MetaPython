@@ -10,6 +10,10 @@
 #include "structmember.h"         // PyMemberDef
 #include <stddef.h>               // offsetof()
 
+/** USDT/STAP_PROBE import */
+#ifdef HAVE_SYS_SDT_H
+#include "sys/sdt.h"
+#endif
 
 /*[clinic input]
 module _asyncio
@@ -1695,6 +1699,11 @@ FutureIter_am_send(futureiterobject *it,
     it->future = NULL;
     res = _asyncio_Future_result_impl(fut);
     if (res != NULL) {
+
+        #ifdef HAVE_SYS_SDT_H
+        STAP_PROBE(python, future_iter_resume);
+        #endif
+
         Py_DECREF(fut);
         *result = res;
         return PYGEN_RETURN;

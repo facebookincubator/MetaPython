@@ -10484,8 +10484,6 @@ fi
 
 
 printf "%s\n" "#define STDC_HEADERS 1" >>confdefs.h
-
-
 # checks for header files
 ac_fn_c_check_header_compile "$LINENO" "alloca.h" "ac_cv_header_alloca_h" "$ac_includes_default"
 if test "x$ac_cv_header_alloca_h" = xyes
@@ -32993,4 +32991,3 @@ Platform \"$host\" with compiler \"$ac_cv_cc_name\" is not supported by the
 CPython core team, see https://peps.python.org/pep-0011/ for more information.
 " >&2;}
 fi
-
