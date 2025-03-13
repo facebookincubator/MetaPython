@@ -3273,7 +3273,7 @@ _PyImport_LoadLazyImportTstate(PyThreadState *tstate, PyObject *lazy_import, int
     if (lvalue < 0) {
         return NULL;
     }
-    if (lvalue > 10) {
+    if (lvalue > 1) {
         PyObject *name = _PyLazyImport_GetName(lazy_import);
         PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R "
                                                 "(most likely due to a circular import)",
