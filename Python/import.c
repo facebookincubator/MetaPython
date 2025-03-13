@@ -1749,6 +1749,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                     goto error;
                 } else if (!res) {
                     PyObject *existing = import_get_module(tstate, name);
+                    Py_XDECREF(existing);
                     if (existing != NULL && _PyDict_GetItemKeepLazy(parent_dict, child) != NULL) {
                         // If the module is already loaded we don't need to do the below, we should
                         // have already recorded the module as a lazy module.  Even if we've loaded
