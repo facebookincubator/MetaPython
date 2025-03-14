@@ -1,3 +1,4 @@
+# ONLY USED FOR CINDERX DEVELOPMENT
 # This file is deliberately not included in the set of deep-frozen bootstrap
 # libraries so it can easily be excluded from the distribution to avoid
 # attempting to initialize CinderX. This is desirable because this code imports
