@@ -35,8 +35,7 @@ from unittest.mock import patch
 
 import _testcindercapi
 
-import cinderx.test_support as cinder_support
-from cinderx.test_support import CINDERJIT_ENABLED, get_await_stack, verify_stack
+from cinderx.test_support import CINDERJIT_ENABLED, get_await_stack, skip_if_jit, verify_stack
 
 from test import libregrtest
 from test.support.script_helper import assert_python_ok, make_script
@@ -2837,7 +2836,7 @@ class GatherAndAsyncLazyValueTests(unittest.TestCase):
         await self.run_duplicate_success_test("test_suspended_duplicate_success", True)
 
 
-@cinder_support.skipUnderJIT("Recursion checks are not consistent in JIT")
+@skip_if_jit("Recursion checks are not consistent in JIT")
 class TestTaskCancel(unittest.TestCase):
     def test_recursive_cancel(self):
         def run(TaskConstructor):
@@ -2933,7 +2932,7 @@ class ALVFutureTests(CFutureTests):
         cls = None
 
 
-@cinder_support.skipUnderJIT("Cycle detection require selective JIT suppression")
+@skip_if_jit("Cycle detection require selective JIT suppression")
 class AsyncLazyValueCycleTest(unittest.TestCase):
     @async_test
     async def test_cycle1(self):
