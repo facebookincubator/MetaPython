@@ -35,7 +35,9 @@ from unittest.mock import patch
 
 import _testcindercapi
 
-from cinderx.test_support import CINDERJIT_ENABLED, get_await_stack, skip_if_jit, verify_stack
+import cinderx.jit
+
+from cinderx.test_support import get_await_stack, skip_if_jit, verify_stack
 
 from test import libregrtest
 from test.support.script_helper import assert_python_ok, make_script
@@ -2047,7 +2049,7 @@ class TestAwaiterFrame(unittest.TestCase):
 
         async def f2():
             await asyncio.sleep(0)
-            if CINDERJIT_ENABLED and cinderjit.jit_frame_mode() == 1:
+            if cinderx.jit.is_enabled() and cinderjit.jit_frame_mode() == 1:
                 with self.assertRaises(NotImplementedError) as context:
                     cinder._get_awaiter_frame()
 
