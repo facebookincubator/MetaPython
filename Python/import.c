@@ -4607,7 +4607,7 @@ is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
         return 1;
     }
 
-    if (!PyDict_CheckExact(frame->f_globals)) {
+    if (frame->f_globals == NULL || !PyDict_CheckExact(frame->f_globals)) {
         return 0;
     }
 
