@@ -1614,7 +1614,7 @@ super_lookup_method_or_attr(PyThreadState *tstate,
         }
         return result;
     }
-    if (type->tp_getattro != PyObject_GenericGetAttr) {
+    if (Py_TYPE(self)->tp_getattro != PyObject_GenericGetAttr) {
         meth_found = NULL;
     }
     return Ci_Super_Lookup(type, self, name, NULL, meth_found);
@@ -6467,19 +6467,6 @@ void
 Cix_format_exc_check_arg(PyThreadState *tstate, PyObject *exc,
                      const char *format_str, PyObject *obj) {
     format_exc_check_arg(tstate, exc, format_str, obj);
-}
-
-PyObject *
-Cix_SuperLookupMethodOrAttr(PyThreadState *tstate,
-                           PyObject *global_super,
-                           PyTypeObject *type,
-                           PyObject *self,
-                           PyObject *name,
-                           int call_no_args,
-                           int *meth_found)
-{
-    return super_lookup_method_or_attr(
-        tstate, global_super, type, self, name, call_no_args, meth_found);
 }
 
 int

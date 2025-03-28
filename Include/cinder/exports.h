@@ -168,11 +168,6 @@ CiAPI_FUNC(PyFrameObject *)
     Cix_PyEval_MakeFrameVector(PyThreadState *tstate, PyFrameConstructor *con,
                                PyObject *locals, PyObject *const *args,
                                Py_ssize_t argcount, PyObject *kwnames);
-CiAPI_FUNC(PyObject *)
-    Cix_SuperLookupMethodOrAttr(PyThreadState *tstate, PyObject *global_super,
-                                PyTypeObject *type, PyObject *self,
-                                PyObject *name, int call_no_args,
-                                int *meth_found);
 CiAPI_FUNC(void) Cix_format_exc_check_arg(PyThreadState *, PyObject *,
                                           const char *, PyObject *);
 CiAPI_FUNC(PyObject *)
