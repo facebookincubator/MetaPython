@@ -6016,6 +6016,25 @@ AsyncLazyValue_get_awaiting_tasks(AsyncLazyValueObj *self,
     return PyLong_FromSsize_t(n);
 }
 
+static PyObject *
+AsyncLazyValue_get_state(AsyncLazyValueObj *self,
+                                  PyObject *Py_UNUSED(ignored))
+{
+    _Py_IDENTIFIER(not_started);
+    _Py_IDENTIFIER(running);
+    _Py_IDENTIFIER(done);
+    switch (self->alv_state) {
+        case ALV_NOT_STARTED:
+            return _PyUnicode_FromId(&PyId_not_started);
+        case ALV_RUNNING:
+            return _PyUnicode_FromId(&PyId_running);
+        case ALV_DONE:
+            return _PyUnicode_FromId(&PyId_done);
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "unknown AsyncLazyValue state");
+    return NULL;
+}
 
 static PyAsyncMethodsWithExtra _AsyncLazyValue_Type_as_async = {
     .ame_async_methods = {
@@ -6035,6 +6054,7 @@ static PyMethodDef AsyncLazyValue_methods[] = {
 
 static PyGetSetDef AsyncLazyValue_getsetlist[] = {
     {"_awaiting_tasks", (getter)AsyncLazyValue_get_awaiting_tasks, NULL, NULL},
+    {"alv_state", (getter)AsyncLazyValue_get_state, NULL, NULL},
     {NULL} /* Sentinel */
 };
 
