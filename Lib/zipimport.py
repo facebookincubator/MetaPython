@@ -506,8 +506,8 @@ def _read_directory(archive):
                             if num_extra_values > 3:
                                 raise ZipImportError(f"can't read header extra: {archive!r}", path=archive)
                             import struct  # for unpack_from
-                            values = struct.unpack_from(f"<{min(num_extra_values, 3)}Q",
-                                                        extra_data, offset=4)
+                            values = list(struct.unpack_from(f"<{min(num_extra_values, 3)}Q",
+                                                        extra_data, offset=4))
 
                             # N.b. Here be dragons: the ordering of these is different than
                             # the header fields, and it's really easy to get it wrong since
