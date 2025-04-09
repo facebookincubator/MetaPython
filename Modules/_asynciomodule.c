@@ -6023,17 +6023,21 @@ AsyncLazyValue_get_state(AsyncLazyValueObj *self,
     _Py_IDENTIFIER(not_started);
     _Py_IDENTIFIER(running);
     _Py_IDENTIFIER(done);
+
+    PyObject *result = NULL;
     switch (self->alv_state) {
         case ALV_NOT_STARTED:
-            return _PyUnicode_FromId(&PyId_not_started);
+            result = _PyUnicode_FromId(&PyId_not_started);
         case ALV_RUNNING:
-            return _PyUnicode_FromId(&PyId_running);
+            result = _PyUnicode_FromId(&PyId_running);
         case ALV_DONE:
-            return _PyUnicode_FromId(&PyId_done);
+            result = _PyUnicode_FromId(&PyId_done);
+        default:
+            PyErr_SetString(PyExc_RuntimeError, "unknown AsyncLazyValue state");
+            result = NULL;
     }
-
-    PyErr_SetString(PyExc_RuntimeError, "unknown AsyncLazyValue state");
-    return NULL;
+    Py_XINCREF(result);
+    return result;
 }
 
 static PyAsyncMethodsWithExtra _AsyncLazyValue_Type_as_async = {
