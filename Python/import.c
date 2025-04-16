@@ -2832,6 +2832,10 @@ import_find_and_load(PyThreadState *tstate, PyObject *abs_name)
 #undef accumulated
 }
 
+/*
+ * Return 1 if a module has `name` registered as a lazy submodule, 0 if it
+ * doesn't. and a negative value on error.
+ */
 static int
 has_lazy_submodule(PyObject *module, PyObject *name)
 {
@@ -2887,6 +2891,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
     PyObject *parent_dict = NULL;
     PyObject *lazy_submodules;
 
+    /* Check if the import has explicitly been marked as an eager import. */
     if (tstate->interp->eager_imports != NULL) {
         Py_ssize_t size = 0;
         if (fromlist != NULL && fromlist != Py_None) {
@@ -2904,19 +2909,22 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                 if (found < 0) {
                     goto error;
                 }
+                /* Flagged as eager import. */
                 if (found) {
-                    ret = 0; /* If the module is flagged as eager import, load eagerly */
+                    ret = 0;
                     goto end;
                 }
             }
         }
+        /* If there's no explicit fromlist, check the module's name. */
         if (size == 0) {
             int found = PySequence_Contains(tstate->interp->eager_imports, name);
             if (found < 0) {
                 goto error;
             }
+            /* Flagged as eager import. */
             if (found) {
-                ret = 0; /* If the module is flagged as eager import, load eagerly */
+                ret = 0;
                 goto end;
             }
         }
@@ -2937,6 +2945,10 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
         }
         Py_DECREF(lazy_submodules);
     }
+
+    /* Break the `import mod1.mod2.mod3.mod4` statement into individual modules.
+     * For each `modA.modB` in the import, register `modB` as a lazy submodule
+     * of `modA`. */
     PyObject *filter = tstate->interp->excluding_modules;
     while (true) {
         Py_ssize_t dot = PyUnicode_FindChar(name, '.', 0, PyUnicode_GET_LENGTH(name), -1);
@@ -2944,6 +2956,9 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
             goto end;
         }
         parent = PyUnicode_Substring(name, 0, dot);
+        /* If `parent` is NULL then this has hit the end of the import, no more
+         * "parent.child" in the import name. The entire import will be resolved
+         * lazily. */
         if (parent == NULL) {
             goto error;
         }
@@ -2952,6 +2967,9 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
         if (child == NULL) {
             goto error;
         }
+
+        /* Only check if the immediate parent module is excluded from Lazy
+         * Imports, load this import eagerly if it is. */
         if (filter != NULL) {
             int found = PySequence_Contains(filter, parent);
             if (found < 0) {
@@ -2963,6 +2981,9 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
             }
         }
         filter = NULL;
+
+        /* Add `child` as a lazy submodule of `parent` in the global
+         * `lazy_modules`. */
         lazy_submodules = PyDict_GetItemWithError(lazy_modules, parent);
         if (lazy_submodules == NULL) {
             if (PyErr_Occurred()) {
@@ -2982,6 +3003,8 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
             goto error;
         }
 
+        /* Add `child` as a lazy submodule to the `lazy_submodules` set on
+         * `parent`. */
         Py_XDECREF(parent_module);
         parent_module = _PyImport_GetModule(tstate, parent);
         if (parent_module == NULL) {
@@ -3016,6 +3039,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                 ret = 0; /* should be eager */
             }
         }
+
         Py_DECREF(name);
         name = parent;
         parent = NULL;
