@@ -22,6 +22,8 @@ from .timeouts import *
 from .threads import *
 from .transports import *
 
+from _asyncio import ci_get_async_stack
+
 __all__ = (base_events.__all__ +
            coroutines.__all__ +
            events.__all__ +
@@ -37,7 +39,8 @@ __all__ = (base_events.__all__ +
            taskgroups.__all__ +
            threads.__all__ +
            timeouts.__all__ +
-           transports.__all__)
+           transports.__all__ +
+           ("ci_get_async_stack",))
 
 if sys.platform == 'win32':  # pragma: no cover
     from .windows_events import *

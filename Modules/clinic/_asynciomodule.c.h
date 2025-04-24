@@ -1546,4 +1546,25 @@ skip_optional_pos:
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=05c15fa7a7439615 input=a9049054013a1b77]*/
+
+PyDoc_STRVAR(_asyncio_ci_get_async_stack__doc__,
+"ci_get_async_stack($module, /)\n"
+"--\n"
+"\n"
+"Return a list of frames including async frames.\n"
+"\n"
+"Meta-internal function for returning a list of stack frames, including frames for\n"
+"async functions.");
+
+#define _ASYNCIO_CI_GET_ASYNC_STACK_METHODDEF    \
+    {"ci_get_async_stack", (PyCFunction)_asyncio_ci_get_async_stack, METH_NOARGS, _asyncio_ci_get_async_stack__doc__},
+
+static PyObject *
+_asyncio_ci_get_async_stack_impl(PyObject *module);
+
+static PyObject *
+_asyncio_ci_get_async_stack(PyObject *module, PyObject *Py_UNUSED(ignored))
+{
+    return _asyncio_ci_get_async_stack_impl(module);
+}
+/*[clinic end generated code: output=a4e46832a210d00b input=a9049054013a1b77]*/

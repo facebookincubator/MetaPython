@@ -5,6 +5,7 @@
 #include "Python.h"
 #include "pycore_pyerrors.h"      // _PyErr_ClearExcState()
 #include "pycore_pystate.h"       // _PyThreadState_GET()
+#include "internal/pycore_frame.h"
 #include "pycore_runtime_init.h"  // _Py_ID()
 #include "pycore_moduleobject.h"  // _PyModule_GetState()
 #include "structmember.h"         // PyMemberDef
@@ -3890,9 +3891,52 @@ fail:
 #undef GET_MOD_ATTR
 }
 
+/*[clinic input]
+_asyncio.ci_get_async_stack
+
+Return a list of frames including async frames.
+
+Meta-internal function for returning a list of stack frames, including frames for
+async functions.
+
+[clinic start generated code]*/
+
+static PyObject *
+_asyncio_ci_get_async_stack_impl(PyObject *module)
+/*[clinic end generated code: output=ec587a9521474e3f input=aaaa8e8499974b1f]*/
+{
+    PyObject *res = PyList_New(0);
+    if (res == NULL) {
+        return NULL;
+    }
+
+    PyThreadState *tstate = PyThreadState_GET();
+    _PyInterpreterFrame* interpreter_frame = _PyThreadState_GetFrame(tstate);
+    while (interpreter_frame) {
+        if (PyList_Append(res, (PyObject*)_PyFrame_GetFrameObject(interpreter_frame)) == -1) {
+            Py_DECREF(res);
+            return NULL;
+        }
+        if (interpreter_frame->owner == FRAME_OWNED_BY_GENERATOR) {
+            PyGenObject* gen = _PyFrame_GetGenerator(interpreter_frame);
+            PyGenObject* gen_awaiter =
+                (PyGenObject*)gen->gi_ci_awaiter;
+            if (gen_awaiter) {
+                interpreter_frame =
+                    (_PyInterpreterFrame*)&gen_awaiter->gi_iframe;
+                continue;
+            }
+        }
+        interpreter_frame = _PyFrame_GetFirstComplete(interpreter_frame->previous);
+    }
+
+    return res;
+}
+
 PyDoc_STRVAR(module_doc, "Accelerator module for asyncio");
 
 static PyMethodDef asyncio_methods[] = {
+    _ASYNCIO_CI_GET_ASYNC_STACK_METHODDEF
     _ASYNCIO_CURRENT_TASK_METHODDEF
     _ASYNCIO_GET_EVENT_LOOP_METHODDEF
     _ASYNCIO_GET_RUNNING_LOOP_METHODDEF
