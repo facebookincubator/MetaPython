@@ -6,6 +6,10 @@ Pending Removal in Python 3.15
   rarely used.  No direct replacement exists.  *Anything* is better than CGI
   to interface a web server with a request handler.
 
+* :mod:`importlib`:
+
+  * ``load_module()`` method: use ``exec_module()`` instead.
+
 * :class:`locale`: :func:`locale.getdefaultlocale` was deprecated in Python 3.11
   and originally planned for removal in Python 3.13 (:gh:`90817`),
   but removal has been postponed to Python 3.15.
@@ -23,6 +27,11 @@ Pending Removal in Python 3.15
   It was largely untested, had a confusing API,
   and was only useful for Jython support.
   (Contributed by Nikita Sobolev in :gh:`116349`.)
+
+* :mod:`sysconfig`:
+
+  * The *check_home* argument of :func:`sysconfig.is_python_build` has been
+    deprecated since Python 3.12.
 
 * :mod:`threading`:
   Passing any arguments to :func:`threading.RLock` is now deprecated.

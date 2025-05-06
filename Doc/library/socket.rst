@@ -833,10 +833,10 @@ The following functions all create :ref:`socket objects <socket-objects>`.
    , a default reasonable value is chosen.
    *reuse_port* dictates whether to set the :data:`SO_REUSEPORT` socket option.
 
-   If *dualstack_ipv6* is true and the platform supports it the socket will
-   be able to accept both IPv4 and IPv6 connections, else it will raise
-   :exc:`ValueError`. Most POSIX platforms and Windows are supposed to support
-   this functionality.
+   If *dualstack_ipv6* is true, *family* is :data:`AF_INET6` and the platform
+   supports it the socket will be able to accept both IPv4 and IPv6 connections,
+   else it will raise :exc:`ValueError`. Most POSIX platforms and Windows are
+   supposed to support this functionality.
    When this functionality is enabled the address returned by
    :meth:`socket.getpeername` when an IPv4 connection occurs will be an IPv6
    address represented as an IPv4-mapped IPv6 address.
@@ -1645,11 +1645,6 @@ to sockets.
    by *bufsize*. A returned empty bytes object indicates that the client has disconnected.
    See the Unix manual page :manpage:`recv(2)` for the meaning of the optional argument
    *flags*; it defaults to zero.
-
-   .. note::
-
-      For best match with hardware and network realities, the value of  *bufsize*
-      should be a relatively small power of 2, for example, 4096.
 
    .. versionchanged:: 3.5
       If the system call is interrupted and the signal handler does not raise

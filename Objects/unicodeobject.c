@@ -1472,11 +1472,14 @@ _copy_characters(PyObject *to, Py_ssize_t to_start,
     assert(PyUnicode_Check(from));
     assert(from_start + how_many <= PyUnicode_GET_LENGTH(from));
 
-    assert(PyUnicode_Check(to));
-    assert(to_start + how_many <= PyUnicode_GET_LENGTH(to));
+    assert(to == NULL || PyUnicode_Check(to));
 
-    if (how_many == 0)
+    if (how_many == 0) {
         return 0;
+    }
+
+    assert(to != NULL);
+    assert(to_start + how_many <= PyUnicode_GET_LENGTH(to));
 
     from_kind = PyUnicode_KIND(from);
     from_data = PyUnicode_DATA(from);
@@ -11856,15 +11859,14 @@ unicode_isidentifier_impl(PyObject *self)
 /*[clinic input]
 str.isprintable as unicode_isprintable
 
-Return True if the string is printable, False otherwise.
+Return True if all characters in the string are printable, False otherwise.
 
-A string is printable if all of its characters are considered printable in
-repr() or if it is empty.
+A character is printable if repr() may use it in its output.
 [clinic start generated code]*/
 
 static PyObject *
 unicode_isprintable_impl(PyObject *self)
-/*[clinic end generated code: output=3ab9626cd32dd1a0 input=98a0e1c2c1813209]*/
+/*[clinic end generated code: output=3ab9626cd32dd1a0 input=4e56bcc6b06ca18c]*/
 {
     Py_ssize_t i, length;
     int kind;

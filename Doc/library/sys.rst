@@ -8,7 +8,7 @@
 
 This module provides access to some variables used or maintained by the
 interpreter and to functions that interact strongly with the interpreter. It is
-always available.
+always available. Unless explicitly noted otherwise, all variables are read-only.
 
 
 .. data:: abiflags
@@ -757,8 +757,8 @@ always available.
 
 .. function:: getdefaultencoding()
 
-   Return the name of the current default string encoding used by the Unicode
-   implementation.
+   Return ``'utf-8'``. This is the name of the default string encoding, used
+   in methods like :meth:`str.encode`.
 
 
 .. function:: getdlopenflags()
@@ -876,7 +876,7 @@ always available.
 
 .. function:: getswitchinterval()
 
-   Return the interpreter's "thread switch interval"; see
+   Return the interpreter's "thread switch interval" in seconds; see
    :func:`setswitchinterval`.
 
    .. versionadded:: 3.2

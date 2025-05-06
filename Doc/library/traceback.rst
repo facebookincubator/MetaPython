@@ -111,14 +111,14 @@ Module-Level Functions
 
 .. function:: print_exc(limit=None, file=None, chain=True)
 
-   This is a shorthand for ``print_exception(sys.exception(), limit, file,
-   chain)``.
+   This is a shorthand for ``print_exception(sys.exception(), limit=limit, file=file,
+   chain=chain)``.
 
 
 .. function:: print_last(limit=None, file=None, chain=True)
 
-   This is a shorthand for ``print_exception(sys.last_exc, limit, file,
-   chain)``.  In general it will work only after an exception has reached
+   This is a shorthand for ``print_exception(sys.last_exc, limit=limit, file=file,
+   chain=chain)``.  In general it will work only after an exception has reached
    an interactive prompt (see :data:`sys.last_exc`).
 
 
@@ -155,6 +155,13 @@ Module-Level Functions
    :ref:`stack frame <frame-objects>`.  The return value has
    the same format as for :func:`extract_tb`.  The optional *f* and *limit*
    arguments have the same meaning as for :func:`print_stack`.
+
+
+.. function:: print_list(extracted_list, file=None)
+
+   Print the list of tuples as returned by :func:`extract_tb` or
+   :func:`extract_stack` as a formatted stack trace to the given file.
+   If *file* is ``None``, the output is written to :data:`sys.stderr`.
 
 
 .. function:: format_list(extracted_list)
@@ -256,7 +263,7 @@ Module-Level Functions
 :class:`!TracebackException` objects are created from actual exceptions to
 capture data for later printing.  They offer a more lightweight method of
 storing this information by avoiding holding references to
-:ref:`traceback<traceback-objects>` and :ref:`frame<frame-objects>` objects
+:ref:`traceback<traceback-objects>` and :ref:`frame<frame-objects>` objects.
 In addition, they expose more options to configure the output compared to
 the module-level functions described above.
 
@@ -471,7 +478,9 @@ the module-level functions described above.
 A :class:`!FrameSummary` object represents a single :ref:`frame <frame-objects>`
 in a :ref:`traceback <traceback-objects>`.
 
-.. class:: FrameSummary(filename, lineno, name, lookup_line=True, locals=None, line=None)
+.. class:: FrameSummary(filename, lineno, name, *,\
+                        lookup_line=True, locals=None,\
+                        line=None, end_lineno=None, colno=None, end_colno=None)
 
    Represents a single :ref:`frame <frame-objects>` in the
    :ref:`traceback <traceback-objects>` or stack that is being formatted
@@ -506,6 +515,22 @@ in a :ref:`traceback <traceback-objects>`.
       A string representing the source code for this frame, with leading and
       trailing whitespace stripped.
       If the source is not available, it is ``None``.
+
+   .. attribute:: FrameSummary.end_lineno
+
+      The last line number of the source code for this frame.
+      By default, it is set to ``None`` and indexation starts from 1.
+
+   .. attribute:: FrameSummary.colno
+
+      The column number of the source code for this frame.
+      By default, it is ``None`` and indexation starts from 0.
+
+   .. attribute:: FrameSummary.end_colno
+
+      The last column number of the source code for this frame.
+      By default, it is ``None`` and indexation starts from 0.
+
 
 .. _traceback-example:
 

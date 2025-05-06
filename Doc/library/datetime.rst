@@ -93,7 +93,7 @@ The :mod:`!datetime` module exports the following constants:
    The largest year number allowed in a :class:`date` or :class:`.datetime` object.
    :const:`MAXYEAR` is 9999.
 
-.. attribute:: UTC
+.. data:: UTC
 
    Alias for the UTC time zone singleton :attr:`datetime.timezone.utc`.
 
@@ -650,8 +650,8 @@ Instance methods:
 
 .. method:: date.replace(year=self.year, month=self.month, day=self.day)
 
-   Return a date with the same value, except for those parameters given new
-   values by whichever keyword arguments are specified.
+   Return a new :class:`date` object with the same values, but with specified
+   parameters updated.
 
    Example::
 
@@ -918,7 +918,7 @@ Other constructors, all class methods:
 
    .. deprecated:: 3.12
 
-      Use :meth:`datetime.now` with :attr:`UTC` instead.
+      Use :meth:`datetime.now` with :const:`UTC` instead.
 
 
 .. classmethod:: datetime.fromtimestamp(timestamp, tz=None)
@@ -990,7 +990,7 @@ Other constructors, all class methods:
 
    .. deprecated:: 3.12
 
-      Use :meth:`datetime.fromtimestamp` with :attr:`UTC` instead.
+      Use :meth:`datetime.fromtimestamp` with :const:`UTC` instead.
 
 
 .. classmethod:: datetime.fromordinal(ordinal)
@@ -1274,10 +1274,10 @@ Instance methods:
    hour=self.hour, minute=self.minute, second=self.second, microsecond=self.microsecond, \
    tzinfo=self.tzinfo, *, fold=0)
 
-   Return a datetime with the same attributes, except for those attributes given
-   new values by whichever keyword arguments are specified. Note that
-   ``tzinfo=None`` can be specified to create a naive datetime from an aware
-   datetime with no conversion of date and time data.
+   Return a new :class:`datetime` object with the same attributes, but with
+   specified parameters updated. Note that ``tzinfo=None`` can be specified to
+   create a naive datetime from an aware datetime with no conversion of date
+   and time data.
 
    .. versionchanged:: 3.6
       Added the *fold* parameter.
@@ -1849,10 +1849,10 @@ Instance methods:
 .. method:: time.replace(hour=self.hour, minute=self.minute, second=self.second, \
    microsecond=self.microsecond, tzinfo=self.tzinfo, *, fold=0)
 
-   Return a :class:`.time` with the same value, except for those attributes given
-   new values by whichever keyword arguments are specified. Note that
-   ``tzinfo=None`` can be specified to create a naive :class:`.time` from an
-   aware :class:`.time`, without conversion of the time data.
+   Return a new :class:`.time` with the same values, but with specified
+   parameters updated. Note that ``tzinfo=None`` can be specified to create a
+   naive :class:`.time` from an aware :class:`.time`, without conversion of the
+   time data.
 
    .. versionchanged:: 3.6
       Added the *fold* parameter.
@@ -2526,7 +2526,24 @@ Broadly speaking, ``d.strftime(fmt)`` acts like the :mod:`time` module's
 
 For the :meth:`.datetime.strptime` class method, the default value is
 ``1900-01-01T00:00:00.000``: any components not specified in the format string
-will be pulled from the default value. [#]_
+will be pulled from the default value.
+
+.. note::
+   When used to parse partial dates lacking a year, :meth:`~.datetime.strptime`
+   will raise when encountering February 29 because its default year of 1900 is
+   *not* a leap year.  Always add a default leap year to partial date strings
+   before parsing.
+
+.. doctest::
+
+    >>> from datetime import datetime
+    >>> value = "2/29"
+    >>> datetime.strptime(value, "%m/%d")
+    Traceback (most recent call last):
+    ...
+    ValueError: day is out of range for month
+    >>> datetime.strptime(f"1904 {value}", "%Y %m/%d")
+    datetime.datetime(1904, 2, 29, 0, 0)
 
 Using ``datetime.strptime(date_string, format)`` is equivalent to::
 
@@ -2652,6 +2669,11 @@ Notes:
    for  formats ``%d``, ``%m``, ``%H``, ``%I``, ``%M``, ``%S``, ``%j``, ``%U``,
    ``%W``, and ``%V``. Format ``%y`` does require a leading zero.
 
+(10)
+   Parsing dates without a year using :meth:`~.datetime.strptime` will fail on
+   representations of February 29 as that date does not exist in the default
+   year of 1900.
+
 .. rubric:: Footnotes
 
 .. [#] If, that is, we ignore the effects of Relativity
@@ -2665,5 +2687,3 @@ Notes:
 .. [#] See R. H. van Gent's `guide to the mathematics of the ISO 8601 calendar
        <https://web.archive.org/web/20220531051136/https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm>`_
        for a good explanation.
-
-.. [#] Passing ``datetime.strptime('Feb 29', '%b %d')`` will fail since 1900 is not a leap year.

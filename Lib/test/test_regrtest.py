@@ -39,6 +39,17 @@ if not support.has_subprocess_support:
 ROOT_DIR = os.path.join(os.path.dirname(__file__), '..', '..')
 ROOT_DIR = os.path.abspath(os.path.normpath(ROOT_DIR))
 LOG_PREFIX = r'[0-9]+:[0-9]+:[0-9]+ (?:load avg: [0-9]+\.[0-9]{2} )?'
+RESULT_REGEX = (
+    'passed',
+    'failed',
+    'skipped',
+    'interrupted',
+    'env changed',
+    'timed out',
+    'ran no tests',
+    'worker non-zero exit code',
+)
+RESULT_REGEX = fr'(?:{"|".join(RESULT_REGEX)})'
 
 EXITCODE_BAD_TEST = 2
 EXITCODE_ENV_CHANGED = 3
@@ -398,8 +409,7 @@ class ParseArgsTestCase(unittest.TestCase):
         # which has an unclear API
         with os_helper.EnvironmentVarGuard() as env:
             # Ignore SOURCE_DATE_EPOCH env var if it's set
-            if 'SOURCE_DATE_EPOCH' in env:
-                del env['SOURCE_DATE_EPOCH']
+            del env['SOURCE_DATE_EPOCH']
 
             regrtest = main.Regrtest(ns)
 
@@ -466,6 +476,19 @@ class ParseArgsTestCase(unittest.TestCase):
         self.assertEqual(regrtest.hunt_refleak.runs, 10)
         self.assertFalse(regrtest.output_on_failure)
 
+    def test_single_process(self):
+        args = ['-j2', '--single-process']
+        with support.captured_stderr():
+            regrtest = self.create_regrtest(args)
+        self.assertEqual(regrtest.num_workers, 0)
+        self.assertTrue(regrtest.single_process)
+
+        args = ['--fast-ci', '--single-process']
+        with support.captured_stderr():
+            regrtest = self.create_regrtest(args)
+        self.assertEqual(regrtest.num_workers, 0)
+        self.assertTrue(regrtest.single_process)
+
 
 @dataclasses.dataclass(slots=True)
 class Rerun:
@@ -530,8 +553,8 @@ class BaseTestCase(unittest.TestCase):
         self.assertRegex(output, regex)
 
     def parse_executed_tests(self, output):
-        regex = (r'^%s\[ *[0-9]+(?:/ *[0-9]+)*\] (%s)'
-                 % (LOG_PREFIX, self.TESTNAME_REGEX))
+        regex = (fr'^{LOG_PREFIX}\[ *[0-9]+(?:/ *[0-9]+)*\] '
+                 fr'({self.TESTNAME_REGEX}) {RESULT_REGEX}')
         parser = re.finditer(regex, output, re.MULTILINE)
         return list(match.group(1) for match in parser)
 
