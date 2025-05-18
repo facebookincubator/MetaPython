@@ -290,7 +290,8 @@ def make_explorer_class(process_args, prod_hostname=None):
         def do_404(self):
             try:
                 static_file = os.path.join(TEMPLATE_DIR, self.path.lstrip("/"))
-                content_type = mimetypes.guess_type(static_file)[0] or "text/html"
+                guessed_type = mimetypes.guess_type(static_file)[0]
+                content_type = guessed_type if guessed_type in mimetypes.types_map.values() else "application/octet-stream"
                 with open(static_file, "rb") as f:
                     self._begin_response(200, content_type)
                     self.end_headers()
