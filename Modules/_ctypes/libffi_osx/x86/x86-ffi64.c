@@ -712,7 +712,11 @@ ffi_closure_unix64_inner(
 		/* Otherwise, allocate space to make them consecutive.  */
 		else
 		{
-			char *a = alloca (16);
+			char *a = (char *)malloc(16);
+			if (!a) {
+				/* Handle allocation failure */
+				abort();
+			}
 			int j;
 
 			avalue[i] = a;
@@ -724,6 +728,7 @@ ffi_closure_unix64_inner(
 				else
 					memcpy (a, &reg_args->gpr[gprcount++], 8);
 			}
+			free(avalue[i]);
 		}
 	}
 
