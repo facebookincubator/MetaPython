@@ -829,9 +829,11 @@ class PathDistribution(Distribution):
         Performance optimization: where possible, resolve the
         normalized name from the file system path.
         """
-        stem = os.path.basename(str(self._path))
+        name = self._name_from_stem(os.path.basename(str(self._path)))
+        if name is None and self.name is None:
+            raise RuntimeError(f"{self._path} has invalid METADATA or PKG-INFO file")
         return (
-            pass_none(Prepared.normalize)(self._name_from_stem(stem))
+            pass_none(Prepared.normalize)(name)
             or super()._normalized_name
         )
 
