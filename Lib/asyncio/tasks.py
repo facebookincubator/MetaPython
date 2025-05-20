@@ -386,6 +386,10 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
             self.__step()
         self = None  # Needed to break cycles when an exception occurs.
 
+    # START META PATCH (Task._step override)
+    # Needed to be compatible with the C version
+    _step = __step
+    # END META PATCH
 
 _PyTask = Task
 
