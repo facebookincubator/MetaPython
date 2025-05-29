@@ -14,11 +14,14 @@ import sys
 if __name__ == "__main__":
     fds = []
     if len(sys.argv) == 1:
+        # START META PATCH
+        # Hard-cap MAXFD to a sane number to avoid timing out subprocess tests
         try:
             _MAXFD = os.sysconf("SC_OPEN_MAX")
         except:
             _MAXFD = 256
-        test_fds = range(0, _MAXFD)
+        test_fds = range(0, min(_MAXFD, 0x1FFFF))
+        # END META PATCH
     else:
         test_fds = map(int, sys.argv[1:])
     for fd in test_fds:
