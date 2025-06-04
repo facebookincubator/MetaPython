@@ -5501,9 +5501,9 @@ compiler_async_comprehension_generator(struct compiler *c, location loc,
         else {
             /* Sub-iter - calculate on the fly */
             VISIT(c, expr, gen->iter);
-            ADDOP(c, LOC(gen->iter), GET_AITER);
         }
     }
+    ADDOP(c, LOC(gen->iter), GET_AITER);
 
     USE_LABEL(c, start);
     /* Runtime will push a block here, so we need to account for that */
@@ -5790,19 +5790,6 @@ pop_inlined_comprehension_state(struct compiler *c, location loc,
     return SUCCESS;
 }
 
-static inline int
-compiler_comprehension_iter(struct compiler *c, comprehension_ty comp)
-{
-    VISIT(c, expr, comp->iter);
-    if (comp->is_async) {
-        ADDOP(c, LOC(comp->iter), GET_AITER);
-    }
-    else {
-        ADDOP(c, LOC(comp->iter), GET_ITER);
-    }
-    return SUCCESS;
-}
-
 static int
 compiler_comprehension(struct compiler *c, expr_ty e, int type,
                        identifier name, asdl_comprehension_seq *generators, expr_ty elt,
@@ -5824,7 +5811,7 @@ compiler_comprehension(struct compiler *c, expr_ty e, int type,
 
     outermost = (comprehension_ty) asdl_seq_GET(generators, 0);
     if (is_inlined) {
-        if (compiler_comprehension_iter(c, outermost)) {
+        if (compiler_visit_expr(c, outermost->iter) < 0) {
             goto error;
         }
         if (push_inlined_comprehension_state(c, loc, entry, &inline_state)) {
@@ -5910,9 +5897,7 @@ compiler_comprehension(struct compiler *c, expr_ty e, int type,
     }
     Py_CLEAR(co);
 
-    if (compiler_comprehension_iter(c, outermost)) {
-        goto error;
-    }
+    VISIT(c, expr, outermost->iter);
 
     ADDOP_I(c, loc, CALL, 0);
 
@@ -6616,8 +6601,8 @@ compiler_warn(struct compiler *c, location loc,
     if (msg == NULL) {
         return ERROR;
     }
-    if (PyErr_WarnExplicitObject(PyExc_SyntaxWarning, msg, c->c_filename,
-                                 loc.lineno, NULL, NULL) < 0)
+    if (_PyErr_WarnExplicitObjectWithContext(PyExc_SyntaxWarning, msg,
+                                             c->c_filename, loc.lineno) < 0)
     {
         if (PyErr_ExceptionMatches(PyExc_SyntaxWarning)) {
             /* Replace the SyntaxWarning exception with a SyntaxError

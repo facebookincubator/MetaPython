@@ -2,7 +2,7 @@
 file descriptors on stdout.
 
 Usage:
-fd_stats.py: check all file descriptors
+fd_status.py: check all file descriptors (up to 255)
 fd_status.py fd1 fd2 ...: check only specified file descriptors
 """
 
@@ -14,14 +14,11 @@ import sys
 if __name__ == "__main__":
     fds = []
     if len(sys.argv) == 1:
-        # START META PATCH
-        # Hard-cap MAXFD to a sane number to avoid timing out subprocess tests
         try:
             _MAXFD = os.sysconf("SC_OPEN_MAX")
         except:
             _MAXFD = 256
-        test_fds = range(0, min(_MAXFD, 0x1FFFF))
-        # END META PATCH
+        test_fds = range(0, min(_MAXFD, 256))
     else:
         test_fds = map(int, sys.argv[1:])
     for fd in test_fds:
