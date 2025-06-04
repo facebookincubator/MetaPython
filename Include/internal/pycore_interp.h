@@ -237,6 +237,8 @@ struct _is {
     PyObject *excluding_modules;
     PyObject *eager_imports;
     PyObject *lazy_modules;
+    PyContext_WatchCallback context_watchers[CONTEXT_MAX_WATCHERS];
+    uint8_t active_context_watchers;
 };
 
 

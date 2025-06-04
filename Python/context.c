@@ -108,6 +108,114 @@ PyContext_CopyCurrent(void)
     return (PyObject *)context_new_from_vars(ctx->ctx_vars);
 }
 
+static const char *
+context_event_name(PyContextEvent event) {
+    switch (event) {
+        case Py_CONTEXT_SWITCHED:
+            return "Py_CONTEXT_SWITCHED";
+        default:
+            return "?";
+    }
+    Py_UNREACHABLE();
+}
+
+static void
+notify_context_watchers(PyThreadState *ts, PyContextEvent event, PyObject *ctx)
+{
+    if (ctx == NULL) {
+        // This will happen after exiting the last context in the stack, which
+        // can occur if context_get was never called before entering a context
+        // (e.g., called `contextvars.Context().run()` on a fresh thread, as
+        // PyContext_Enter doesn't call context_get).
+        ctx = Py_None;
+    }
+    assert(Py_REFCNT(ctx) > 0);
+    PyInterpreterState *interp = ts->interp;
+    assert(interp->_initialized);
+    uint8_t bits = interp->active_context_watchers;
+    int i = 0;
+    while (bits) {
+        assert(i < CONTEXT_MAX_WATCHERS);
+        if (bits & 1) {
+            PyContext_WatchCallback cb = interp->context_watchers[i];
+            assert(cb != NULL);
+            if (cb(event, ctx) < 0) {
+                PyObject *context = NULL;
+                #if Py_DEBUG
+                // META: this is a bug in Cinderx, you can't use Object_repr when PyErr_Set
+                // has been called and Py_DEBUG is on, because Py_TYPE(v)->tp_repr != NULL
+                // But it should be NULL for PyContext objects.
+                PyObject *repr = PyUnicode_FromFormat("<%s object at %p>",
+                    Py_TYPE(ctx)->tp_name, ctx);
+                #else
+                PyObject *repr = PyObject_Repr(ctx);
+                #endif
+                if (repr != NULL) {
+                    context = PyUnicode_FromFormat(
+                        "Exception ignored in %s watcher callback for %U",
+                        context_event_name(event), repr);
+                    Py_DECREF(repr);
+                }
+                if (context == NULL) {
+                    context = Py_NewRef(Py_None);
+                }
+                PyErr_WriteUnraisable(context);
+                Py_DECREF(context);
+            }
+        }
+        i++;
+        bits >>= 1;
+    }
+}
+
+
+int
+PyContext_AddWatcher(PyContext_WatchCallback callback)
+{
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    assert(interp->_initialized);
+
+    for (int i = 0; i < CONTEXT_MAX_WATCHERS; i++) {
+        if (!interp->context_watchers[i]) {
+            interp->context_watchers[i] = callback;
+            interp->active_context_watchers |= (1 << i);
+            return i;
+        }
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "no more context watcher IDs available");
+    return -1;
+}
+
+
+int
+PyContext_ClearWatcher(int watcher_id)
+{
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    assert(interp->_initialized);
+    if (watcher_id < 0 || watcher_id >= CONTEXT_MAX_WATCHERS) {
+        PyErr_Format(PyExc_ValueError, "Invalid context watcher ID %d", watcher_id);
+        return -1;
+    }
+    if (!interp->context_watchers[watcher_id]) {
+        PyErr_Format(PyExc_ValueError, "No context watcher set for ID %d", watcher_id);
+        return -1;
+    }
+    interp->context_watchers[watcher_id] = NULL;
+    interp->active_context_watchers &= ~(1 << watcher_id);
+    return 0;
+}
+
+
+static inline void
+context_switched(PyThreadState *ts)
+{
+    ts->context_ver++;
+    // ts->context is used instead of context_get() because context_get() might
+    // throw if ts->context is NULL.
+    notify_context_watchers(ts, Py_CONTEXT_SWITCHED, ts->context);
+}
+
 
 static int
 _PyContext_Enter(PyThreadState *ts, PyObject *octx)
@@ -125,7 +233,7 @@ _PyContext_Enter(PyThreadState *ts, PyObject *octx)
     ctx->ctx_entered = 1;
 
     ts->context = Py_NewRef(ctx);
-    ts->context_ver++;
+    context_switched(ts);
 
     return 0;
 }
@@ -161,11 +269,10 @@ _PyContext_Exit(PyThreadState *ts, PyObject *octx)
     }
 
     Py_SETREF(ts->context, (PyObject *)ctx->ctx_prev);
-    ts->context_ver++;
 
     ctx->ctx_prev = NULL;
     ctx->ctx_entered = 0;
-
+    context_switched(ts);
     return 0;
 }
 
