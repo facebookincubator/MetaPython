@@ -277,6 +277,8 @@ struct _is {
     Py_ssize_t _interactive_src_count;
     // In 3.14+ this is interp->threads.preallocated.
     _PyThreadStateImpl *threads_preallocated;
+    PyContext_WatchCallback context_watchers[CONTEXT_MAX_WATCHERS];
+    uint8_t active_context_watchers;
 };
 
 
