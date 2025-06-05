@@ -147,12 +147,12 @@ def main(opcode_py, outfile='Include/opcode.h',
             fobj.write(DEFINE.format(name, op))
 
         iobj.write("\nextern const uint32_t _PyOpcode_Jump[9];\n")
-        iobj.write("\nextern const uint8_t _PyOpcode_Caches[256];\n")
-        iobj.write("\nextern const uint8_t _PyOpcode_Deopt[256];\n")
+        iobj.write("\nPyAPI_DATA(uint8_t) _PyOpcode_Caches[256];\n")
+        iobj.write("\nPyAPI_DATA(uint8_t) _PyOpcode_Deopt[256];\n")
         iobj.write("\n#ifdef NEED_OPCODE_TABLES\n")
         write_int_array_from_ops("_PyOpcode_Jump", opcode['hasjrel'] + opcode['hasjabs'], iobj)
 
-        iobj.write("\nconst uint8_t _PyOpcode_Caches[256] = {\n")
+        iobj.write("\nuint8_t _PyOpcode_Caches[256] = {\n")
         for i, entries in enumerate(opcode["_inline_cache_entries"]):
             if entries:
                 iobj.write(f"    [{opname[i]}] = {entries},\n")
@@ -165,7 +165,7 @@ def main(opcode_py, outfile='Include/opcode.h',
         for basic, family in opcode["_specializations"].items():
             for specialized in family:
                 deoptcodes[specialized] = basic
-        iobj.write("\nconst uint8_t _PyOpcode_Deopt[256] = {\n")
+        iobj.write("\nuint8_t _PyOpcode_Deopt[256] = {\n")
         for opt, deopt in sorted(deoptcodes.items()):
             iobj.write(f"    [{opt}] = {deopt},\n")
         for i, name in enumerate(opname):

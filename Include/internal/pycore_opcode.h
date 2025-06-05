@@ -14,9 +14,9 @@ extern "C" {
 
 extern const uint32_t _PyOpcode_Jump[9];
 
-extern const uint8_t _PyOpcode_Caches[256];
+PyAPI_DATA(uint8_t) _PyOpcode_Caches[256];
 
-extern const uint8_t _PyOpcode_Deopt[256];
+PyAPI_DATA(uint8_t) _PyOpcode_Deopt[256];
 
 #ifdef NEED_OPCODE_TABLES
 const uint32_t _PyOpcode_Jump[9] = {
@@ -31,7 +31,7 @@ const uint32_t _PyOpcode_Jump[9] = {
     48U,
 };
 
-const uint8_t _PyOpcode_Caches[256] = {
+uint8_t _PyOpcode_Caches[256] = {
     [BINARY_SUBSCR] = 1,
     [STORE_SUBSCR] = 1,
     [UNPACK_SEQUENCE] = 1,
@@ -46,7 +46,7 @@ const uint8_t _PyOpcode_Caches[256] = {
     [CALL] = 3,
 };
 
-const uint8_t _PyOpcode_Deopt[256] = {
+uint8_t _PyOpcode_Deopt[256] = {
     [BEFORE_ASYNC_WITH] = BEFORE_ASYNC_WITH,
     [BEFORE_WITH] = BEFORE_WITH,
     [BINARY_OP] = BINARY_OP,
