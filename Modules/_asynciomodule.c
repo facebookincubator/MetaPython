@@ -6044,13 +6044,9 @@ AsyncLazyValue_get_state(AsyncLazyValueObj *self,
     return result;
 }
 
-static PyAsyncMethodsWithExtra _AsyncLazyValue_Type_as_async = {
-    .ame_async_methods = {
-        (unaryfunc)AsyncLazyValue_await,         /* am_await */
-        0,                                       /* am_aiter */
-        0,                                       /* am_anext */
-        (sendfunc)AsyncLazyValue_itersend,       /* am_send */
-    },
+static PyAsyncMethods _AsyncLazyValue_Type_as_async = {
+        .am_await = (unaryfunc)AsyncLazyValue_await,
+        .am_send = (sendfunc)AsyncLazyValue_itersend,
 };
 
 static PyMethodDef AsyncLazyValue_methods[] = {
@@ -6069,15 +6065,14 @@ static PyGetSetDef AsyncLazyValue_getsetlist[] = {
 static PyTypeObject _AsyncLazyValue_Type = {
     PyVarObject_HEAD_INIT(NULL, 0) "_asyncio.AsyncLazyValue",
     .tp_basicsize = sizeof(AsyncLazyValueObj),
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-                Py_TPFLAGS_HAVE_AM_EXTRA | Py_TPFLAGS_BASETYPE,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
     .tp_traverse = (traverseproc)AsyncLazyValue_traverse,
     .tp_clear = (inquiry)AsyncLazyValue_clear,
     .tp_iter = PyObject_SelfIter,
     .tp_iternext = (iternextfunc)AsyncLazyValue_iternext,
     .tp_methods = AsyncLazyValue_methods,
     .tp_getset = AsyncLazyValue_getsetlist,
-    .tp_as_async = (PyAsyncMethods*)&_AsyncLazyValue_Type_as_async,
+    .tp_as_async = &_AsyncLazyValue_Type_as_async,
     .tp_init = (initproc)AsyncLazyValue_init,
     .tp_new = PyType_GenericNew,
     .tp_dealloc = (destructor)AsyncLazyValue_dealloc,
@@ -6542,18 +6537,14 @@ AwaitableValueObj_clear(AwaitableValueObj *self)
 }
 
 static PySendResult
-AwaitableValueObj_itersend(PyThreadState *Py_UNUSED(tstate),
+AwaitableValueObj_itersend(
                           AwaitableValueObj *self,
                           PyObject *Py_UNUSED(sentValue),
                           PyObject **pResult);
 
-static PyAsyncMethodsWithExtra AwaitableValue_Type_as_async = {
-    .ame_async_methods = {
-        (unaryfunc)PyObject_SelfIter,                   /* am_await */
-        0,                                              /* am_aiter */
-        0,                                              /* am_anext */
-    },
-    .ame_send = (sendfunc)AwaitableValueObj_itersend
+static PyAsyncMethods AwaitableValue_Type_as_async = {
+    .am_await = (unaryfunc)PyObject_SelfIter,
+    .am_send = (sendfunc)AwaitableValueObj_itersend,
 };
 
 static PyObject *
@@ -6573,7 +6564,7 @@ AwaitableValueObj_dealloc(AwaitableValueObj *self)
 }
 
 static PySendResult
-AwaitableValueObj_itersend(PyThreadState *Py_UNUSED(tstate),
+AwaitableValueObj_itersend(
                           AwaitableValueObj *self,
                           PyObject *Py_UNUSED(sentValue),
                           PyObject **pResult)
@@ -6615,12 +6606,11 @@ static PyGetSetDef AwaitableValue_Type_getsetlist[] = {
 static PyTypeObject AwaitableValue_Type = {
     PyVarObject_HEAD_INIT(NULL, 0) "_asyncio.AwaitableValue",
     .tp_basicsize = sizeof(AwaitableValueObj),
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-                Py_TPFLAGS_HAVE_AM_EXTRA,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_new = PyType_GenericNew,
     .tp_traverse = (traverseproc)AwaitableValueObj_traverse,
     .tp_clear = (inquiry)AwaitableValueObj_clear,
-    .tp_as_async = (PyAsyncMethods*)&AwaitableValue_Type_as_async,
+    .tp_as_async = &AwaitableValue_Type_as_async,
     .tp_getset = AwaitableValue_Type_getsetlist,
     .tp_iternext = (iternextfunc)AwaitableValueObj_next,
     .tp_iter = PyObject_SelfIter,
