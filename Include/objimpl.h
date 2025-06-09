@@ -228,6 +228,58 @@ PyAPI_FUNC(int) PyObject_GC_IsFinalized(PyObject *);
 #  undef Py_CPYTHON_OBJIMPL_H
 #endif
 
+struct Ci_PyGCImpl;
+
+/*
+ * Collect cyclic garbage.
+ *
+ * impl           - Pointer to the collection implementation.
+ * tstate         - Indirectly specifies (via tstate->interp) the interpreter
+                    for which collection should be performed.
+ * generation     - Collect generations <= this value
+ * n_collected    - Out param for number of objects collected
+ * n_unollectable - Out param for number of uncollectable garbage objects
+ * nofail         - When true, swallow exceptions that occur during collection
+ */
+typedef Py_ssize_t (*Ci_gc_collect_t)(struct Ci_PyGCImpl *impl, PyThreadState* tstate, int generation,
+                                      Py_ssize_t *n_collected, Py_ssize_t *n_uncollectable,
+                                      int nofail);
+
+// Free a collector
+typedef void (*Ci_gc_finalize_t)(struct Ci_PyGCImpl *impl);
+
+// An implementation of cyclic garbage collection
+typedef struct Ci_PyGCImpl {
+    Ci_gc_collect_t collect;
+    Ci_gc_finalize_t finalize;
+} Ci_PyGCImpl;
+
+struct _gc_runtime_state;
+
+/*
+ * Set the collection implementation.
+ *
+ * The callee takes ownership of impl.
+ *
+ * Returns a pointer to the previous impl, which the caller is responsible for freeing
+ * using the returned impl's finalize().
+ */
+PyAPI_FUNC(Ci_PyGCImpl *) Ci_PyGC_SetImpl(struct _gc_runtime_state *gc_state, Ci_PyGCImpl *impl);
+
+/*
+ * Returns a pointer to the current GC implementation but does not transfer
+ * ownership to the caller.
+ */
+PyAPI_FUNC(Ci_PyGCImpl *) Ci_PyGC_GetImpl(struct _gc_runtime_state *gc_state);
+
+/*
+ * Clear free lists (e.g. frames, tuples, etc.) for the given interpreter.
+ *
+ * This should be called by GC implementations after collecting the highest
+ * generation.
+ */
+PyAPI_FUNC(void) Ci_PyGC_ClearFreeLists(PyInterpreterState* interp);
+
 #ifdef __cplusplus
 }
 #endif
