@@ -11,6 +11,8 @@
 #include "pycore_gil.h"           // struct _gil_runtime_state
 #include "pycore_gc.h"            // struct _gc_runtime_state
 #include "pycore_warnings.h"      // struct _warnings_runtime_state
+	
+#define CONTEXT_MAX_WATCHERS 8
 
 #ifdef __cplusplus
 extern "C" {
@@ -324,6 +326,8 @@ struct _is {
 
     /* whether lazy imports was enabled at runtime */
     int lazy_imports;
+    PyContext_WatchCallback context_watchers[CONTEXT_MAX_WATCHERS];
+    uint8_t active_context_watchers;
 };
 
 extern void _PyInterpreterState_ClearModules(PyInterpreterState *interp);

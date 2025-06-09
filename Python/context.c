@@ -109,6 +109,105 @@ PyContext_CopyCurrent(void)
 }
 
 
+static const char *
+context_event_name(PyContextEvent event) {
+    switch (event) {
+        case Py_CONTEXT_SWITCHED:
+            return "Py_CONTEXT_SWITCHED";
+        default:
+            return "?";
+    }
+    Py_UNREACHABLE();
+}
+
+
+static void
+notify_context_watchers(PyThreadState *ts, PyContextEvent event, PyObject *ctx)
+{
+    if (ctx == NULL) {
+        // This will happen after exiting the last context in the stack, which
+        // can occur if context_get was never called before entering a context
+        // (e.g., called `contextvars.Context().run()` on a fresh thread, as
+        // PyContext_Enter doesn't call context_get).
+        ctx = Py_None;
+    }
+    assert(Py_REFCNT(ctx) > 0);
+    PyInterpreterState *interp = ts->interp;
+    uint8_t bits = interp->active_context_watchers;
+    int i = 0;
+    while (bits) {
+        assert(i < CONTEXT_MAX_WATCHERS);
+        if (bits & 1) {
+            PyContext_WatchCallback cb = interp->context_watchers[i];
+            assert(cb != NULL);
+            if (cb(event, ctx) < 0) {
+                PyObject *context = NULL;
+                PyObject *repr = PyObject_Repr(ctx);
+                if (repr != NULL) {
+                    context = PyUnicode_FromFormat(
+                        "Exception ignored in %s watcher callback for %U",
+                        context_event_name(event), repr);
+                    Py_DECREF(repr);
+                }
+                if (context == NULL) {
+                    context = Py_NewRef(Py_None);
+                }
+                PyErr_WriteUnraisable(context);
+                Py_DECREF(context);
+            }
+        }
+        i++;
+        bits >>= 1;
+    }
+}
+
+
+int
+PyContext_AddWatcher(PyContext_WatchCallback callback)
+{
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+
+    for (int i = 0; i < CONTEXT_MAX_WATCHERS; i++) {
+        if (!interp->context_watchers[i]) {
+            interp->context_watchers[i] = callback;
+            interp->active_context_watchers |= (1 << i);
+            return i;
+        }
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "no more context watcher IDs available");
+    return -1;
+}
+
+
+int
+PyContext_ClearWatcher(int watcher_id)
+{
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    if (watcher_id < 0 || watcher_id >= CONTEXT_MAX_WATCHERS) {
+        PyErr_Format(PyExc_ValueError, "Invalid context watcher ID %d", watcher_id);
+        return -1;
+    }
+    if (!interp->context_watchers[watcher_id]) {
+        PyErr_Format(PyExc_ValueError, "No context watcher set for ID %d", watcher_id);
+        return -1;
+    }
+    interp->context_watchers[watcher_id] = NULL;
+    interp->active_context_watchers &= ~(1 << watcher_id);
+    return 0;
+}
+
+
+static inline void
+context_switched(PyThreadState *ts)
+{
+    ts->context_ver++;
+    // ts->context is used instead of context_get() because context_get() might
+    // throw if ts->context is NULL.
+    notify_context_watchers(ts, Py_CONTEXT_SWITCHED, ts->context);
+}
+
+
 static int
 _PyContext_Enter(PyThreadState *ts, PyObject *octx)
 {
