@@ -3969,7 +3969,7 @@ module_exec(PyObject *mod)
 #define ADD_SET_AWAITER(type_name, func) \
     do { \
         memcpy(&state->type_name ## _ame.ame_async_methods, state->type_name->tp_as_async, sizeof(PyAsyncMethods)); \
-        state->type_name->tp_as_async = &state->type_name ## _ame; \
+        state->type_name->tp_as_async = (PyAsyncMethods*)(&state->type_name ## _ame); \
         state->type_name ## _ame.ame_setawaiter = func; \
         Ci_HeapType_AM_EXTRA(state->FutureIterType)->ame_setawaiter = func; \
     } while (0)

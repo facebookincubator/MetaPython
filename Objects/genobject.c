@@ -1234,7 +1234,7 @@ PyTypeObject PyCoro_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
-    &coro_as_async,                             /* tp_as_async */
+    (PyAsyncMethods*)&coro_as_async,            /* tp_as_async */
     (reprfunc)coro_repr,                        /* tp_repr */
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */
@@ -1654,7 +1654,7 @@ PyTypeObject PyAsyncGen_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
-    &async_gen_as_async,                        /* tp_as_async */
+    (PyAsyncMethods*)&async_gen_as_async,       /* tp_as_async */
     (reprfunc)async_gen_repr,                   /* tp_repr */
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */
@@ -1949,7 +1949,7 @@ PyTypeObject _PyAsyncGenASend_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
-    &async_gen_asend_as_async,                  /* tp_as_async */
+    (PyAsyncMethods*)&async_gen_asend_as_async, /* tp_as_async */
     0,                                          /* tp_repr */
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */
