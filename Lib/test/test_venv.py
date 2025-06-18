@@ -860,6 +860,7 @@ class EnsurePipTest(BaseTest):
         err = re.sub("^(WARNING: )?The directory .* or its parent directory "
                      "is not owned or is not writable by the current user.*$", "",
                      err, flags=re.MULTILINE)
+        err = re.sub("^WARNING: Disabling truststore since ssl support is missing$", "", err, flags=re.MULTILINE)
         # Ignore warning about missing optional module:
         try:
             import ssl
