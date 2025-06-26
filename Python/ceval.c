@@ -1548,8 +1548,10 @@ clear_thread_frame(PyThreadState *tstate, _PyInterpreterFrame * frame)
     assert(frame->owner == FRAME_OWNED_BY_THREAD);
     // Make sure that this is, indeed, the top frame. We can't check this in
     // _PyThreadState_PopFrame, since f_code is already cleared at that point:
+#ifndef ENABLE_LIGHTWEIGHT_FRAMES
     assert((PyObject **)frame + frame->f_code->co_framesize ==
         tstate->datastack_top);
+#endif
     tstate->c_recursion_remaining--;
     assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
     _PyFrame_ClearExceptCode(frame);
