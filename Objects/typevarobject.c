@@ -114,7 +114,7 @@ caller(void)
     if (f == NULL || f->f_funcobj == NULL) {
         Py_RETURN_NONE;
     }
-    PyObject *r = PyFunction_GetModule(f->f_funcobj);
+    PyObject *r = _PyFrame_GetModule(f);
     if (!r) {
         PyErr_Clear();
         Py_RETURN_NONE;

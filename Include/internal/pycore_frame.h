@@ -193,6 +193,37 @@ _PyThreadState_GetFrame(PyThreadState *tstate)
     return _PyFrame_GetFirstComplete(tstate->cframe->current_frame);
 }
 
+int
+_PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame);
+
+static inline int
+_PyFrame_EnsureFrameFullyInitialized(_PyInterpreterFrame *frame)
+{
+    if (!PyFunction_Check(frame->f_funcobj)) {
+        return _PyFrame_InitializeExternalFrame(frame);
+    }
+    return 0;
+}
+
+static inline PyObject *
+_PyFrame_GetGlobals(_PyInterpreterFrame *frame) {
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+    return ((PyFunctionObject*)frame->f_funcobj)->func_globals;
+}
+
+static inline PyObject *
+_PyFrame_GetBuiltins(_PyInterpreterFrame *frame) {
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+    return ((PyFunctionObject*)frame->f_funcobj)->func_builtins;
+}
+
+PyObject *
+_PyFrame_GetModule(_PyInterpreterFrame *frame);
+
 /* For use by _PyFrame_GetFrameObject
   Do not call directly. */
 PyAPI_FUNC(PyFrameObject *)
@@ -204,11 +235,12 @@ _PyFrame_MakeAndSetFrameObject(_PyInterpreterFrame *frame);
 static inline PyFrameObject *
 _PyFrame_GetFrameObject(_PyInterpreterFrame *frame)
 {
-
-    assert(!_PyFrame_IsIncomplete(frame));
-    PyFrameObject *res =  frame->frame_obj;
-    if (res != NULL) {
-        return res;
+    if (PyFunction_Check(frame->f_funcobj)) {
+        assert(!_PyFrame_IsIncomplete(frame));
+        PyFrameObject *res =  frame->frame_obj;
+        if (res != NULL) {
+            return res;
+        }
     }
     return _PyFrame_MakeAndSetFrameObject(frame);
 }

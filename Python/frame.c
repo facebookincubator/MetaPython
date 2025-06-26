@@ -28,8 +28,12 @@ _PyFrame_Traverse(_PyInterpreterFrame *frame, visitproc visit, void *arg)
 PyFrameObject *
 _PyFrame_MakeAndSetFrameObject(_PyInterpreterFrame *frame)
 {
-    assert(frame->frame_obj == NULL);
     PyObject *exc = PyErr_GetRaisedException();
+
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+    assert(frame->frame_obj == NULL);
 
     PyFrameObject *f = _PyFrame_New_NoTrack(frame->f_code);
     if (f == NULL) {
@@ -142,6 +146,40 @@ _PyFrame_ClearExceptCode(_PyInterpreterFrame *frame)
     Py_XDECREF(frame->frame_obj);
     Py_XDECREF(frame->f_locals);
     Py_DECREF(frame->f_funcobj);
+}
+
+PyObject *
+_PyFrame_GetModule(_PyInterpreterFrame *frame) {
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+    return PyFunction_GetModule((PyFunctionObject*)frame->f_funcobj);
+}
+
+int
+_PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame) {
+    // Tracing this allocation can throw off tracemalloc expectations
+    // so we temporarily disable.
+    int cur_tracemalloc = _PyRuntime.tracemalloc.config.tracing;
+    _PyRuntime.tracemalloc.config.tracing = 0;
+    PyObject *frame_addr = PyLong_FromVoidPtr((void*)frame);
+    _PyRuntime.tracemalloc.config.tracing = cur_tracemalloc;
+    if (frame_addr == NULL) {
+        return -1;
+    }
+    PyObject *tmp = PyObject_Vectorcall(frame->f_funcobj, &frame_addr, 1, NULL);
+    Py_DECREF(frame_addr);
+    if (tmp == NULL) {
+        return -1;
+    }
+
+    Py_DECREF(tmp);
+    if (!PyFunction_Check(frame->f_funcobj)) {
+        PyErr_SetString(PyExc_RuntimeError, 
+            "expected frame handler to normalize frame");
+        return -1;
+    }
+    return 0;
 }
 
 /* Unstable API functions */

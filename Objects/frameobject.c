@@ -1212,6 +1212,10 @@ frame_get_var(_PyInterpreterFrame *frame, PyCodeObject *co, int i,
 PyObject *
 _PyFrame_GetLocals(_PyInterpreterFrame *frame, int include_hidden)
 {
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+
     /* Merge fast locals into f->f_locals */
     PyObject *locals = frame->f_locals;
     if (locals == NULL) {

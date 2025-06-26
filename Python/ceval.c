@@ -2324,7 +2324,7 @@ _PyEval_GetBuiltins(PyThreadState *tstate)
 {
     _PyInterpreterFrame *frame = _PyThreadState_GetFrame(tstate);
     if (frame != NULL) {
-        return frame->f_builtins;
+        return _PyFrame_GetBuiltins(frame);
     }
     return tstate->interp->builtins;
 }
@@ -2393,7 +2393,7 @@ _PyEval_GetGlobals(PyThreadState *tstate)
     if (current_frame == NULL) {
         return NULL;
     }
-    return current_frame->f_globals;
+    return _PyFrame_GetGlobals(current_frame);
 }
 
 PyObject *
