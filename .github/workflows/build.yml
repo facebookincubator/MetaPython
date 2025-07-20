@@ -4,12 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-    - 'main'
-    - '3.*'
+    - 'meta/3.14'
   pull_request:
     branches:
-    - 'main'
-    - '3.*'
+    - 'meta/3.14'
 
 permissions:
   contents: read
