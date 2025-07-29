@@ -167,6 +167,10 @@ _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame) {
     if (frame_addr == NULL) {
         return -1;
     }
+    if (PyFunction_Check(frame->f_funcobj)) {
+        // re-entrancy during the allocation caused the frame to be initialized
+        return 0;
+    }
     PyObject *tmp = PyObject_Vectorcall(frame->f_funcobj, &frame_addr, 1, NULL);
     Py_DECREF(frame_addr);
     if (tmp == NULL) {
