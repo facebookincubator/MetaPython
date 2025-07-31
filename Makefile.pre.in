@@ -2445,6 +2445,11 @@ inclinstall:
 		$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(INCLUDEPY)/internal; \
 	else	true; \
 	fi
+	@if test ! -d $(DESTDIR)$(INCLUDEPY)/cinder; then \
+		echo "Creating directory $(DESTDIR)$(INCLUDEPY)/cinder"; \
+		$(INSTALL) -d -m $(DIRMODE) $(DESTDIR)$(INCLUDEPY)/cinder; \
+	else	true; \
+	fi
 	@for i in $(srcdir)/Include/*.h; \
 	do \
 		echo $(INSTALL_DATA) $$i $(INCLUDEPY); \
@@ -2459,6 +2464,11 @@ inclinstall:
 	do \
 		echo $(INSTALL_DATA) $$i $(INCLUDEPY)/internal; \
 		$(INSTALL_DATA) $$i $(DESTDIR)$(INCLUDEPY)/internal; \
+	done
+	@for i in $(srcdir)/Include/cinder/*.h; \
+	do \
+		echo $(INSTALL_DATA) $$i $(INCLUDEPY)/cinder; \
+		$(INSTALL_DATA) $$i $(DESTDIR)$(INCLUDEPY)/cinder; \
 	done
 	$(INSTALL_DATA) pyconfig.h $(DESTDIR)$(CONFINCLUDEPY)/pyconfig.h
 
