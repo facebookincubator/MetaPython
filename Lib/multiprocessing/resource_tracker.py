@@ -276,7 +276,7 @@ def main(fd):
                     if cmd == 'REGISTER':
                         cache[rtype].add(name)
                     elif cmd == 'UNREGISTER':
-                        cache[rtype].remove(name)
+                        cache.get(rtype, set()).discard(name)
                     elif cmd == 'PROBE':
                         pass
                     else:
