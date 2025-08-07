@@ -56,8 +56,8 @@ Some facts and figures:
    +------------------+---------------------------------------------+
    | mode             | action                                      |
    +==================+=============================================+
-   | ``'r' or 'r:*'`` | Open for reading with transparent           |
-   |                  | compression (recommended).                  |
+   | ``'r'`` or       | Open for reading with transparent           |
+   | ``'r:*'``        | compression (recommended).                  |
    +------------------+---------------------------------------------+
    | ``'r:'``         | Open for reading exclusively without        |
    |                  | compression.                                |
@@ -85,10 +85,11 @@ Some facts and figures:
    |                  | Raise a :exc:`FileExistsError` exception    |
    |                  | if it already exists.                       |
    +------------------+---------------------------------------------+
-   | ``'a' or 'a:'``  | Open for appending with no compression. The |
-   |                  | file is created if it does not exist.       |
+   | ``'a'`` or       | Open for appending with no compression. The |
+   | ``'a:'``         | file is created if it does not exist.       |
    +------------------+---------------------------------------------+
-   | ``'w' or 'w:'``  | Open for uncompressed writing.              |
+   | ``'w'`` or       | Open for uncompressed writing.              |
+   | ``'w:'``         |                                             |
    +------------------+---------------------------------------------+
    | ``'w:gz'``       | Open for gzip compressed writing.           |
    +------------------+---------------------------------------------+
@@ -1303,6 +1304,9 @@ Command-line options
 Examples
 --------
 
+Reading examples
+~~~~~~~~~~~~~~~~~~~
+
 How to extract an entire tar archive to the current working directory::
 
    import tarfile
@@ -1325,6 +1329,23 @@ a generator function instead of a list::
    tar.extractall(members=py_files(tar))
    tar.close()
 
+How to read a gzip compressed tar archive and display some member information::
+
+   import tarfile
+   tar = tarfile.open("sample.tar.gz", "r:gz")
+   for tarinfo in tar:
+       print(tarinfo.name, "is", tarinfo.size, "bytes in size and is ", end="")
+       if tarinfo.isreg():
+           print("a regular file.")
+       elif tarinfo.isdir():
+           print("a directory.")
+       else:
+           print("something else.")
+   tar.close()
+
+Writing examples
+~~~~~~~~~~~~~~~~
+
 How to create an uncompressed tar archive from a list of filenames::
 
    import tarfile
@@ -1340,19 +1361,15 @@ The same example using the :keyword:`with` statement::
         for name in ["foo", "bar", "quux"]:
             tar.add(name)
 
-How to read a gzip compressed tar archive and display some member information::
+How to create and write an archive to stdout using
+:data:`sys.stdout.buffer <sys.stdout>` in the *fileobj* parameter
+in :meth:`TarFile.add`::
 
-   import tarfile
-   tar = tarfile.open("sample.tar.gz", "r:gz")
-   for tarinfo in tar:
-       print(tarinfo.name, "is", tarinfo.size, "bytes in size and is ", end="")
-       if tarinfo.isreg():
-           print("a regular file.")
-       elif tarinfo.isdir():
-           print("a directory.")
-       else:
-           print("something else.")
-   tar.close()
+    import sys
+    import tarfile
+    with tarfile.open("sample.tar.gz", "w|gz", fileobj=sys.stdout.buffer) as tar:
+        for name in ["foo", "bar", "quux"]:
+            tar.add(name)
 
 How to create an archive and reset the user information using the *filter*
 parameter in :meth:`TarFile.add`::

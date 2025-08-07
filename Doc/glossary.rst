@@ -402,6 +402,11 @@ Glossary
       with :term:`abstract base classes <abstract base class>`.)  Instead, it
       typically employs :func:`hasattr` tests or :term:`EAFP` programming.
 
+   dunder
+      An informal short-hand for "double underscore", used when talking about a
+      :term:`special method`. For example, ``__init__`` is often pronounced
+      "dunder init".
+
    EAFP
       Easier to ask for forgiveness than permission.  This common Python coding
       style assumes the existence of valid keys or attributes and catches
@@ -1163,6 +1168,11 @@ Glossary
       :func:`sys.getrefcount` function to return the
       reference count for a particular object.
 
+      In :term:`CPython`, reference counts are not considered to be stable
+      or well-defined values; the number of references to an object, and how
+      that number is affected by Python code, may be different between
+      versions.
+
    regular package
       A traditional :term:`package`, such as a directory containing an
       ``__init__.py`` file.
@@ -1235,6 +1245,16 @@ Glossary
       and ending with double underscores.  Special methods are documented in
       :ref:`specialnames`.
 
+   standard library
+      The collection of :term:`packages <package>`, :term:`modules <module>`
+      and :term:`extension modules <extension module>` distributed as a part
+      of the official Python interpreter package.  The exact membership of the
+      collection may vary based on platform, available system libraries, or
+      other criteria.  Documentation can be found at :ref:`library-index`.
+
+      See also :data:`sys.stdlib_module_names` for a list of all possible
+      standard library module names.
+
    statement
       A statement is part of a suite (a "block" of code).  A statement is either
       an :term:`expression` or one of several constructs with a keyword, such
@@ -1244,6 +1264,9 @@ Glossary
       An external tool that reads Python code and analyzes it, looking for
       issues such as incorrect types. See also :term:`type hints <type hint>`
       and the :mod:`typing` module.
+
+   stdlib
+      An abbreviation of :term:`standard library`.
 
    strong reference
       In Python's C API, a strong reference is a reference to an object
@@ -1380,6 +1403,11 @@ Glossary
    virtual machine
       A computer defined entirely in software.  Python's virtual machine
       executes the :term:`bytecode` emitted by the bytecode compiler.
+
+   walrus operator
+      A light-hearted way to refer to the :ref:`assignment expression
+      <assignment-expressions>` operator ``:=`` because it looks a bit like a
+      walrus if you turn your head.
 
    Zen of Python
       Listing of Python design principles and philosophies that are helpful in

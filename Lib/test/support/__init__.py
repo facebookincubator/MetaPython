@@ -512,7 +512,12 @@ def has_no_debug_ranges():
     return not bool(config['code_debug_ranges'])
 
 def requires_debug_ranges(reason='requires co_positions / debug_ranges'):
-    return unittest.skipIf(has_no_debug_ranges(), reason)
+    try:
+        skip = has_no_debug_ranges()
+    except unittest.SkipTest as e:
+        skip = True
+        reason = e.args[0] if e.args else reason
+    return unittest.skipIf(skip, reason)
 
 @contextlib.contextmanager
 def suppress_immortalization(suppress=True):
@@ -1622,7 +1627,7 @@ def check__all__(test_case, module, name_of_module=None, extra=(),
     'module'.
 
     The 'name_of_module' argument can specify (as a string or tuple thereof)
-    what module(s) an API could be defined in in order to be detected as a
+    what module(s) an API could be defined in order to be detected as a
     public API. One case for this is when 'module' imports part of its public
     API from other modules, possibly a C backend (like 'csv' and its '_csv').
 
@@ -2269,6 +2274,7 @@ def check_disallow_instantiation(testcase, tp, *args, **kwds):
         qualname = f"{name}"
     msg = f"cannot create '{re.escape(qualname)}' instances"
     testcase.assertRaisesRegex(TypeError, msg, tp, *args, **kwds)
+    testcase.assertRaisesRegex(TypeError, msg, tp.__new__, tp, *args, **kwds)
 
 def get_recursion_depth():
     """Get the recursion depth of the caller function.
