@@ -536,18 +536,19 @@ tracemalloc_alloc(int use_calloc, void *ctx, size_t nelem, size_t elsize)
     if (ptr == NULL)
         return NULL;
 
-    TABLES_LOCK();
-
     if (tracemalloc_config.tracing) {
+        TABLES_LOCK();
+
         if (ADD_TRACE(ptr, nelem * elsize) < 0) {
             /* Failed to allocate a trace for the new memory block */
             alloc->free(alloc->ctx, ptr);
             ptr = NULL;
         }
-    }
-    // else: gh-128679: tracemalloc.stop() was called by another thread
 
-    TABLES_UNLOCK();
+        TABLES_UNLOCK();
+    }
+
+    // else: gh-128679: tracemalloc.stop() was called by another thread
     return ptr;
 }
 
@@ -619,14 +620,14 @@ tracemalloc_free(void *ctx, void *ptr)
 
     alloc->free(alloc->ctx, ptr);
 
-    TABLES_LOCK();
-
     if (tracemalloc_config.tracing) {
+        TABLES_LOCK();
+
         REMOVE_TRACE(ptr);
+
+        TABLES_UNLOCK();
     }
     // else: gh-128679: tracemalloc.stop() was called by another thread
-
-    TABLES_UNLOCK();
 }
 
 
@@ -760,11 +761,11 @@ tracemalloc_raw_realloc(void *ctx, void *ptr, size_t new_size)
         ptr2 = alloc->realloc(alloc->ctx, ptr, new_size);
 
         if (ptr2 != NULL && ptr != NULL) {
-            TABLES_LOCK();
             if (tracemalloc_config.tracing) {
+                TABLES_LOCK();
                 REMOVE_TRACE(ptr);
+                TABLES_UNLOCK();
             }
-            TABLES_UNLOCK();
         }
         return ptr2;
     }

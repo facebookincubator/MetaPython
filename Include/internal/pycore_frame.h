@@ -193,8 +193,7 @@ _PyThreadState_GetFrame(PyThreadState *tstate)
     return _PyFrame_GetFirstComplete(tstate->cframe->current_frame);
 }
 
-int
-_PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame);
+PyAPI_FUNC(int) _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame);
 
 static inline int
 _PyFrame_EnsureFrameFullyInitialized(_PyInterpreterFrame *frame)
@@ -205,20 +204,34 @@ _PyFrame_EnsureFrameFullyInitialized(_PyInterpreterFrame *frame)
     return 0;
 }
 
+PyFunctionObject *
+_PyFrame_ReifyFrame(_PyInterpreterFrame *frame);
+
+static inline PyFunctionObject *
+_PyFrame_GetFunction(_PyInterpreterFrame *frame)
+{
+    if (PyFunction_Check(frame->f_funcobj)) {
+        return (PyFunctionObject *)frame->f_funcobj;
+    }
+    return _PyFrame_ReifyFrame(frame);
+}
+
 static inline PyObject *
 _PyFrame_GetGlobals(_PyInterpreterFrame *frame) {
-    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+    PyFunctionObject *func = _PyFrame_GetFunction(frame);
+    if (func == NULL) {
         return NULL;
     }
-    return ((PyFunctionObject*)frame->f_funcobj)->func_globals;
+    return func->func_globals;
 }
 
 static inline PyObject *
 _PyFrame_GetBuiltins(_PyInterpreterFrame *frame) {
-    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+    PyFunctionObject *func = _PyFrame_GetFunction(frame);
+    if (func == NULL) {
         return NULL;
     }
-    return ((PyFunctionObject*)frame->f_funcobj)->func_builtins;
+    return func->func_builtins;
 }
 
 PyObject *
@@ -242,6 +255,7 @@ _PyFrame_GetFrameObject(_PyInterpreterFrame *frame)
             return res;
         }
     }
+        
     return _PyFrame_MakeAndSetFrameObject(frame);
 }
 

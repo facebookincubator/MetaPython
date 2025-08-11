@@ -30,9 +30,18 @@ _PyFrame_MakeAndSetFrameObject(_PyInterpreterFrame *frame)
 {
     PyObject *exc = PyErr_GetRaisedException();
 
-    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
-        return NULL;
+    if (!PyFunction_Check(frame->f_funcobj)) {
+        if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+            return NULL;
+        }
+
+        PyFrameObject *res =  frame->frame_obj;
+        if (res != NULL) {
+            PyErr_SetRaisedException(exc);
+            return res;
+        }
     }
+
     assert(frame->frame_obj == NULL);
 
     PyFrameObject *f = _PyFrame_New_NoTrack(frame->f_code);
@@ -148,24 +157,17 @@ _PyFrame_ClearExceptCode(_PyInterpreterFrame *frame)
     Py_DECREF(frame->f_funcobj);
 }
 
-PyObject *
-_PyFrame_GetModule(_PyInterpreterFrame *frame) {
-    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
-        return NULL;
-    }
-    return PyFunction_GetModule((PyFunctionObject*)frame->f_funcobj);
-}
-
-int
-_PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame) {
-    // Tracing this allocation can throw off tracemalloc expectations
+// Calls the frame reifier and returns the original function object
+PyFunctionObject *
+_PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
+{
+     // Tracing this allocation can throw off tracemalloc expectations
     // so we temporarily disable.
     int cur_tracemalloc = _PyRuntime.tracemalloc.config.tracing;
     _PyRuntime.tracemalloc.config.tracing = 0;
     PyObject *frame_addr = PyLong_FromVoidPtr((void*)frame);
-    _PyRuntime.tracemalloc.config.tracing = cur_tracemalloc;
     if (frame_addr == NULL) {
-        return -1;
+        goto error;
     }
     if (PyFunction_Check(frame->f_funcobj)) {
         // re-entrancy during the allocation caused the frame to be initialized
@@ -174,16 +176,33 @@ _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame) {
     PyObject *tmp = PyObject_Vectorcall(frame->f_funcobj, &frame_addr, 1, NULL);
     Py_DECREF(frame_addr);
     if (tmp == NULL) {
-        return -1;
+        goto error;
     }
 
-    Py_DECREF(tmp);
-    if (!PyFunction_Check(frame->f_funcobj)) {
+    if (!PyFunction_Check(tmp)) {
         PyErr_SetString(PyExc_RuntimeError, 
-            "expected frame handler to normalize frame");
-        return -1;
+            "expected frame handler to return original function");
+        goto error;
     }
-    return 0;
+    Py_DECREF(tmp); // the function is kept alive by the frame
+error:
+    _PyRuntime.tracemalloc.config.tracing = cur_tracemalloc;
+
+    return (PyFunctionObject *)tmp;
+}
+
+PyObject *
+_PyFrame_GetModule(_PyInterpreterFrame *frame) {
+    PyFunctionObject *func = _PyFrame_GetFunction(frame);
+    if (func == NULL) {
+        return NULL;
+    }
+    return PyFunction_GetModule(func);
+}
+
+int
+_PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame) {
+    return _PyFrame_ReifyFrame(frame) != NULL;
 }
 
 /* Unstable API functions */
@@ -205,6 +224,7 @@ PyUnstable_InterpreterFrame_GetLasti(struct _PyInterpreterFrame *frame)
 int
 PyUnstable_InterpreterFrame_GetLine(_PyInterpreterFrame *frame)
 {
+    _PyFrame_EnsureFrameFullyInitialized(frame);
     int addr = _PyInterpreterFrame_LASTI(frame) * sizeof(_Py_CODEUNIT);
     return PyCode_Addr2Line(frame->f_code, addr);
 }

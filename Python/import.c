@@ -4686,12 +4686,22 @@ PyImport_IsLazyImportsEnabled(void)
     PyThreadState *tstate = _PyThreadState_GET();
     _PyInterpreterFrame *frame = tstate->cframe->current_frame;
     /* Find the closest module frame to the current frame: */
+    if (frame != NULL &&
+        frame->owner != FRAME_OWNED_BY_CSTACK &&
+        _PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return -1;
+    }
 #if PY_VERSION_HEX >= 0x030C0000
     while (frame != NULL && (frame->owner == FRAME_OWNED_BY_CSTACK || frame->f_globals != frame->f_locals)) {
 #else
     while (frame != NULL && frame->f_globals != frame->f_locals) {
 #endif
         frame = frame->previous;
+        if (frame != NULL &&
+            frame->owner != FRAME_OWNED_BY_CSTACK &&
+            _PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+            return -1;
+        }
     }
     if (frame == NULL) {
         assert(0);
