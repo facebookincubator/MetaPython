@@ -161,6 +161,8 @@ _PyFrame_ClearExceptCode(_PyInterpreterFrame *frame)
 PyFunctionObject *
 _PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
 {
+    PyObject *exc = PyErr_GetRaisedException();
+
      // Tracing this allocation can throw off tracemalloc expectations
     // so we temporarily disable.
     int cur_tracemalloc = _PyRuntime.tracemalloc.config.tracing;
@@ -171,6 +173,7 @@ _PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
     }
     if (PyFunction_Check(frame->f_funcobj)) {
         // re-entrancy during the allocation caused the frame to be initialized
+        PyErr_SetRaisedException(exc);
         return 0;
     }
     PyObject *tmp = PyObject_Vectorcall(frame->f_funcobj, &frame_addr, 1, NULL);
@@ -181,10 +184,12 @@ _PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
 
     if (!PyFunction_Check(tmp)) {
         PyErr_SetString(PyExc_RuntimeError, 
-            "expected frame handler to return original function");
+            "expected frame handler to return original function");        
+        Py_DECREF(tmp);
         goto error;
     }
     Py_DECREF(tmp); // the function is kept alive by the frame
+    PyErr_SetRaisedException(exc);
 error:
     _PyRuntime.tracemalloc.config.tracing = cur_tracemalloc;
 
