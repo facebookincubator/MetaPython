@@ -4462,6 +4462,9 @@ _imp_source_hash_impl(PyObject *module, long key, Py_buffer *source)
     return PyBytes_FromStringAndSize(hash.data, sizeof(hash.data));
 }
 
+long _PyImport_LazyImportsCacheSeq = 0;
+PyObject *_PyImport_LazyImportsCacheSeqObj = NULL;
+
 PyObject *
 PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
 {
@@ -4524,6 +4527,10 @@ PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
     }
 
     interp->lazy_imports = Py_IsNone(enabled) ? interp->config.lazy_imports : _enabled;
+
+    ++_PyImport_LazyImportsCacheSeq;
+    Py_XDECREF(_PyImport_LazyImportsCacheSeqObj);
+    _PyImport_LazyImportsCacheSeqObj = NULL;
 
     return result;
 
@@ -4629,6 +4636,23 @@ _imp__set_lazy_imports_in_module_impl(PyObject *module, PyObject *enabled)
     return _PyImport_SetLazyImportsInModule(enabled);
 }
 
+static bool
+has_lazy_imports_enabled_cached(PyObject *lazy_imports_enabled)
+{
+    if (lazy_imports_enabled == NULL ||
+        !PyTuple_CheckExact(lazy_imports_enabled) ||
+        PyTuple_GET_SIZE(lazy_imports_enabled) != 2) {
+        return false;
+    }
+
+    PyObject *version_tag = PyTuple_GET_ITEM(lazy_imports_enabled, 1);
+    if (!PyLong_CheckExact(version_tag)) {
+        return false;
+    }
+
+    return PyLong_AsLong(version_tag) == _PyImport_LazyImportsCacheSeq;
+}
+
 static int
 is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
 {
@@ -4653,18 +4677,35 @@ is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
     }
 
     PyObject *lazy_imports_enabled  = PyDict_GetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__));
-    if (lazy_imports_enabled == NULL) {
+    if (!has_lazy_imports_enabled_cached(lazy_imports_enabled)) {
         int eager = PySequence_Contains(filter, modname);
         if (eager == -1) {
             _PyErr_Clear(tstate);
             return 0;
         }
+
         lazy_imports = eager ? 0 : 1;
-        if (PyDict_SetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__), lazy_imports ? Py_True : Py_False) == -1) {
+        PyObject *cache = PyTuple_New(2);
+        if (cache != NULL) {
+            if (_PyImport_LazyImportsCacheSeqObj == NULL) {
+                _PyImport_LazyImportsCacheSeqObj = PyLong_FromLong(_PyImport_LazyImportsCacheSeq);
+                if (_PyImport_LazyImportsCacheSeqObj == NULL) {
+                    _PyErr_Clear(tstate);
+                }
+            }
+            if (_PyImport_LazyImportsCacheSeqObj != NULL) {
+                PyTuple_SET_ITEM(cache, 0, PyBool_FromLong(lazy_imports));
+                PyTuple_SET_ITEM(cache, 1, Py_NewRef(_PyImport_LazyImportsCacheSeqObj));
+                if (PyDict_SetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__), cache) == -1) {
+                    _PyErr_Clear(tstate);
+                }
+            }
+            Py_DECREF(cache);
+        } else {
             _PyErr_Clear(tstate);
         }
     } else {
-        lazy_imports = PyObject_IsTrue(lazy_imports_enabled);
+        lazy_imports = PyObject_IsTrue(PyTuple_GET_ITEM(lazy_imports_enabled, 0));
         if (lazy_imports == -1) {
             _PyErr_Clear(tstate);
             return 0;
