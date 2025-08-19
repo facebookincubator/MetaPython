@@ -1108,7 +1108,7 @@ builtin_exec_impl(PyObject *module, PyObject *source, PyObject *globals,
         PyObject *source_copy;
         const char *str;
         PyCompilerFlags cf = _PyCompilerFlags_INIT;
-        cf.cf_flags = PyCF_SOURCE_IS_UTF8;
+        cf.cf_flags = PyCF_SOURCE_IS_UTF8 | PyCF_DISABLE_LAZY_IMPORTS;
         str = _Py_SourceAsString(source, "exec",
                                        "string, bytes or code", &cf,
                                        &source_copy);

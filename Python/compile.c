@@ -1178,7 +1178,8 @@ codegen_addop_j(instr_sequence *seq, location loc,
 
 #define ADDOP_IMPORT(C, LOC, O, TYPE) { \
     if (((C)->u->u_scope_type == COMPILER_SCOPE_MODULE) \
-        && ((C)->u->u_nfblocks == 0)) { \
+        && ((C)->u->u_nfblocks == 0) \
+        && !(C->c_flags.cf_flags & PyCF_DISABLE_LAZY_IMPORTS)) { \
         ADDOP_NAME((C), (LOC), IMPORT_NAME, (O), TYPE); \
     } else { \
         ADDOP_NAME((C), (LOC), EAGER_IMPORT_NAME, (O), TYPE); \

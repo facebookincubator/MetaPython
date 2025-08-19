@@ -19,9 +19,10 @@
 #define PyCF_TYPE_COMMENTS 0x1000
 #define PyCF_ALLOW_TOP_LEVEL_AWAIT 0x2000
 #define PyCF_ALLOW_INCOMPLETE_INPUT 0x4000
+#define PyCF_DISABLE_LAZY_IMPORTS 0x8000
 #define PyCF_COMPILE_MASK (PyCF_ONLY_AST | PyCF_ALLOW_TOP_LEVEL_AWAIT | \
                            PyCF_TYPE_COMMENTS | PyCF_DONT_IMPLY_DEDENT | \
-                           PyCF_ALLOW_INCOMPLETE_INPUT)
+                           PyCF_ALLOW_INCOMPLETE_INPUT | PyCF_DISABLE_LAZY_IMPORTS)
 
 typedef struct {
     int cf_flags;  /* bitmask of CO_xxx flags relevant to future */
