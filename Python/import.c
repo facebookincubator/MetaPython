@@ -3351,7 +3351,7 @@ PyImport_AppendInittab(const char *name, PyObject* (*initfunc)(void))
 }
 
 int
-_PyImport_IsLazyImportsEnabled(PyThreadState *tstate)
+_PyImport_IsLazyImportsActive(PyThreadState *tstate)
 {
     PyFrameObject *frame = closest_module_frame(tstate->frame);
     if (frame == NULL) {
@@ -3389,7 +3389,7 @@ int
 PyImport_IsLazyImportsEnabled()
 {
     PyThreadState *tstate = _PyThreadState_GET();
-    return _PyImport_IsLazyImportsEnabled(tstate);
+    return tstate->interp->lazy_imports;
 }
 
 #ifdef __cplusplus

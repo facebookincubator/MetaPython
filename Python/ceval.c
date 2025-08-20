@@ -3525,7 +3525,7 @@ main_loop:
 
             if (f->f_globals == f->f_locals &&
                 f->f_iblock == 0 &&
-                _PyImport_IsLazyImportsEnabled(tstate)) {
+                _PyImport_IsLazyImportsActive(tstate)) {
                 res = _PyImport_LazyImportName(f->f_builtins,
                                                f->f_globals,
                                                f->f_locals == NULL ? Py_None : f->f_locals,
