@@ -183,8 +183,8 @@ _PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
     }
 
     if (!PyFunction_Check(tmp)) {
-        PyErr_SetString(PyExc_RuntimeError, 
-            "expected frame handler to return original function");        
+        PyErr_SetString(PyExc_RuntimeError,
+            "expected frame handler to return original function");
         Py_DECREF(tmp);
         goto error;
     }
@@ -202,7 +202,7 @@ _PyFrame_GetModule(_PyInterpreterFrame *frame) {
     if (func == NULL) {
         return NULL;
     }
-    return PyFunction_GetModule(func);
+    return PyFunction_GetModule((PyObject*)func);
 }
 
 int
