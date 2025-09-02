@@ -82,7 +82,7 @@ _PyGen_Finalize(PyObject *self)
          * target awaitable. */
         PyObject *yf = _PyGen_yf(gen);
         if (yf) {
-            Ci_PyAwaitable_SetAwaiter(yf, NULL);
+            Ci_PyAwaitable_SetAwaiter(yf, Py_None);
             Py_DECREF(yf);
         }
     }
@@ -1120,7 +1120,7 @@ Ci_get_awaiter(PyGenObject *gen, void *Py_UNUSED(ignored))
 static void
 Ci_set_awaiter(PyGenObject *gen, PyObject *awaiter)
 {
-    if (awaiter == NULL) {
+    if (awaiter == NULL || awaiter == Py_None) {
         Py_CLEAR(gen->gi_ci_awaiter);
     } else if (gen->gi_frame_state < FRAME_COMPLETED) {
         Py_XINCREF(awaiter);

@@ -1440,6 +1440,9 @@ FutureObj_repr(FutureObj *fut)
 static void
 Ci_FutureObj_set_awaiter(PyObject *self, PyObject *awaiter)
 {
+    if (awaiter == NULL) {
+        awaiter = Py_None;
+    }
     PyObject *set_awaiter_func = PyObject_GetAttrString(self, "__set_awaiter__");
     if (set_awaiter_func == NULL) {
         PyErr_Clear();
