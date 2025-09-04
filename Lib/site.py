@@ -607,8 +607,9 @@ def main():
     sethelper()
     if not sys.flags.isolated:
         enablerlcompleter()
+
     import cinderx
-    cinderx.init()
+
     execsitecustomize()
     if ENABLE_USER_SITE:
         execusercustomize()
