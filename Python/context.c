@@ -225,7 +225,7 @@ _PyContext_Enter(PyThreadState *ts, PyObject *octx)
 
     Py_INCREF(ctx);
     ts->context = (PyObject *)ctx;
-    ts->context_ver++;
+    context_switched(ts);
 
     return 0;
 }
