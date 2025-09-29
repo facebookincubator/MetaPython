@@ -2132,6 +2132,7 @@ TESTSUBDIRS=	idlelib/idle_test \
 		test \
 		test/test_ast \
 		test/audiodata \
+		test/audit_test_data \
 		test/certdata \
 		test/certdata/capath \
 		test/cjkencodings \
