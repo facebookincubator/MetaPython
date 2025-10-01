@@ -608,7 +608,13 @@ def main():
     if not sys.flags.isolated:
         enablerlcompleter()
 
-    import cinderx
+    # Uses the same init_cinderx indirection as 3.12 even though 3.10.cinder is always
+    # meant to be used with cinderx installed.  Being able to run without the cinderx
+    # module is needed for bootstrapping the 3.10.cinder runtime.
+    try:
+        import init_cinderx
+    except ImportError:
+        pass
 
     execsitecustomize()
     if ENABLE_USER_SITE:
