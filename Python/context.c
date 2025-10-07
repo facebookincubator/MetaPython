@@ -261,10 +261,10 @@ _PyContext_Exit(PyThreadState *ts, PyObject *octx)
     }
 
     Py_SETREF(ts->context, (PyObject *)ctx->ctx_prev);
-    ts->context_ver++;
 
     ctx->ctx_prev = NULL;
     ctx->ctx_entered = 0;
+    context_switched(ts);
 
     return 0;
 }
