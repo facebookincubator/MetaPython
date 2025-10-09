@@ -305,6 +305,16 @@ def requires(resource, msg=None):
     if resource == 'gui' and not _is_gui_available():
         raise ResourceDenied(_is_gui_available.reason)
 
+def _get_kernel_version(sysname="Linux"):
+    import platform
+    if platform.system() != sysname:
+        return None
+    version_txt = platform.release().split('-', 1)[0]
+    try:
+        return tuple(map(int, version_txt.split('.')))
+    except ValueError:
+        return None
+
 def _requires_unix_version(sysname, min_version):
     """Decorator raising SkipTest if the OS is `sysname` and the version is less
     than `min_version`.
@@ -519,24 +529,42 @@ def requires_debug_ranges(reason='requires co_positions / debug_ranges'):
         reason = e.args[0] if e.args else reason
     return unittest.skipIf(skip, reason)
 
-@contextlib.contextmanager
-def suppress_immortalization(suppress=True):
-    """Suppress immortalization of deferred objects."""
+
+def can_use_suppress_immortalization(suppress=True):
+    """Check if suppress_immortalization(suppress) can be used.
+
+    Use this helper in code where SkipTest must be eagerly handled.
+    """
+    if not suppress:
+        return True
     try:
         import _testinternalcapi
     except ImportError:
-        yield
-        return
+        return False
+    return True
 
+
+@contextlib.contextmanager
+def suppress_immortalization(suppress=True):
+    """Suppress immortalization of deferred objects.
+
+    If _testinternalcapi is not available, the decorated test or class
+    is skipped. Use can_use_suppress_immortalization() outside test cases
+    to check if this decorator can be used.
+    """
     if not suppress:
-        yield
+        yield  # no-op
         return
 
+    from .import_helper import import_module
+
+    _testinternalcapi = import_module("_testinternalcapi")
     _testinternalcapi.suppress_immortalization(True)
     try:
         yield
     finally:
         _testinternalcapi.suppress_immortalization(False)
+
 
 def skip_if_suppress_immortalization():
     try:
@@ -2736,7 +2764,7 @@ def no_color():
     from .os_helper import EnvironmentVarGuard
 
     with (
-        swap_attr(_colorize, "can_colorize", lambda file=None: False),
+        swap_attr(_colorize, "can_colorize", lambda *, file=None: False),
         EnvironmentVarGuard() as env,
     ):
         env.unset("FORCE_COLOR", "NO_COLOR", "PYTHON_COLORS")

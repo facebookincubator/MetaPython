@@ -259,6 +259,9 @@ def _create_parser():
     group = parser.add_argument_group('Selecting tests')
     group.add_argument('-r', '--randomize', action='store_true',
                        help='randomize test execution order.' + more_details)
+    group.add_argument('--no-randomize', dest='no_randomize', action='store_true',
+                       help='do not randomize test execution order, even if '
+                       'it would be implied by another option')
     group.add_argument('-f', '--fromfile', metavar='FILE',
                        help='read names of tests to run from a file.' +
                             more_details)
@@ -434,7 +437,11 @@ def _parse_args(args, **kwargs):
         if ns.python is None:
             ns.rerun = True
         ns.print_slow = True
-        ns.verbose3 = True
+        if not ns.verbose:
+            ns.verbose3 = True
+        else:
+            # --verbose has the priority over --verbose3
+            pass
     else:
         ns._add_python_opts = False
 
@@ -512,6 +519,8 @@ def _parse_args(args, **kwargs):
                     ns.use_resources.append(r)
     if ns.random_seed is not None:
         ns.randomize = True
+    if ns.no_randomize:
+        ns.randomize = False
     if ns.verbose:
         ns.header = True
 
