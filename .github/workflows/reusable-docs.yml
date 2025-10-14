@@ -52,7 +52,7 @@ jobs:
         git fetch origin "${refspec_base}" --shallow-since="${DATE}" \
           --no-tags --prune --no-recurse-submodules
     - name: 'Set up Python'
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3'
         cache: 'pip'
@@ -112,7 +112,7 @@ jobs:
       with:
         persist-credentials: false
     - name: 'Set up Python'
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3'
         cache: 'pip'

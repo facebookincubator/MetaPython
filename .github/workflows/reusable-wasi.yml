@@ -50,7 +50,7 @@ jobs:
     - name: "Add ccache to PATH"
       run: echo "PATH=/usr/lib/ccache:$PATH" >> "$GITHUB_ENV"
     - name: "Install Python"
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.x'
     - name: "Runner image version"
