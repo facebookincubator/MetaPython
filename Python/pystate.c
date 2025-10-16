@@ -94,6 +94,13 @@ current_fast_set(_PyRuntimeState *Py_UNUSED(runtime), PyThreadState *tstate)
 #endif
 }
 
+void
+Ci_SetTStateForGC(PyThreadState *tstate)
+{
+    current_fast_set(tstate->interp, tstate);
+}
+
+
 static inline void
 current_fast_clear(_PyRuntimeState *Py_UNUSED(runtime))
 {
