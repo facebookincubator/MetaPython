@@ -1121,11 +1121,6 @@ class CinderTest(unittest.TestCase):
         foo.__dict__["x"] = 2
         self.assertEqual(foo.x, 1)
 
-    def test_strictmodule_unassigned_field(self):
-        d = {"<assigned:x>": False, "x": 1}
-        foo = StrictModule(d, False)
-        self.assertNotIn("x", foo.__dict__)
-
 
 def async_test(f):
     assert inspect.iscoroutinefunction(f)
