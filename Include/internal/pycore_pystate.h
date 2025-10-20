@@ -113,6 +113,9 @@ _Py_ThreadCanHandleSignals(PyInterpreterState *interp)
    and interpreter state */
 
 #if defined(HAVE_THREAD_LOCAL) && !defined(Py_BUILD_CORE_MODULE)
+#  if defined(Py_ENABLE_SHARED) && _Py__has_attribute(tls_model)
+__attribute__((tls_model("initial-exec")))
+#  endif
 extern _Py_thread_local PyThreadState *_Py_tss_tstate;
 #endif
 
