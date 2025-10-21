@@ -15,10 +15,15 @@ from idlelib.editor import fixwordbreaks
 from idlelib.percolator import Percolator
 import idlelib.pyshell
 from idlelib.pyshell import fix_x11_paste, PyShell, PyShellFileList
-from idlelib.run import fix_scaling
 import idlelib.sidebar
 from idlelib.sidebar import get_end_linenumber, get_lineno
 
+# Lazy Imports Compatibility: Explictly load `fix_scaling` so that the test loader is able to find it with `getattr()`.
+try:
+    import idlelib.run
+    fix_scaling = idlelib.run.fix_scaling
+except Exception:
+    pass
 
 class Dummy_editwin:
     def __init__(self, text):

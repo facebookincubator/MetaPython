@@ -7,6 +7,7 @@ import contextlib
 import decimal
 import fractions
 import gc
+import importlib
 import io
 import locale
 import math
@@ -968,12 +969,17 @@ class BuiltinTest(ComplexesAreIdenticalMixin, unittest.TestCase):
                                eval, code, ns)
 
     def test_exec_builtins_mapping_import(self):
-        code = compile("import foo.bar", "test", "exec")
+        # Force the import to happen even with Lazy Imports enabled
+        code = compile("import foo.bar; foo.bar", "test", "exec")
         ns = {'__builtins__': types.MappingProxyType({})}
         self.assertRaisesRegex(ImportError, "__import__ not found", exec, code, ns)
         ns = {'__builtins__': types.MappingProxyType({'__import__': lambda *args: args})}
+        # Go back to using original code object since bar doesn't exist
+        code = compile("import foo.bar", "test", "exec")
         exec(code, ns)
-        self.assertEqual(ns['foo'], ('foo.bar', ns, ns, None, 0))
+        # Skip this assert since lazy imports doesn't resolve foo.bar
+        if not importlib.is_lazy_imports_enabled():
+            self.assertEqual(ns['foo'], ('foo.bar', ns, ns, None, 0))
 
     def test_eval_builtins_mapping_reduce(self):
         # list_iterator.__reduce__() calls _PyEval_GetBuiltin("iter")

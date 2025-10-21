@@ -976,7 +976,7 @@ class RunFailedTests(TestBase):
             modname = 'spam_spam_spam'
             filename = self.add_module(modname, script)
             self.assert_run_failed(SyntaxError, f"""
-                import {modname}
+                import {modname}; {modname}
                 """)
 
     def test_NameError(self):

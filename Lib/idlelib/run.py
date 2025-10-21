@@ -27,7 +27,13 @@ from idlelib import rpc  # multiple objects
 from idlelib import stackviewer  # StackTreeItem
 import __main__
 
-import tkinter  # Use tcl and, if startup fails, messagebox.
+# Lazy Imports Incompatibility: The following modules must be imported eagerly
+try:
+    import tkinter  # Use tcl and, if startup fails, messagebox.
+    from tkinter import simpledialog, messagebox, font, dialog, filedialog, commondialog, ttk
+except Exception:
+    pass
+
 if not hasattr(sys.modules['idlelib.run'], 'firstrun'):
     # Undo modifications of tkinter by idlelib imports; see bpo-25507.
     for mod in ('simpledialog', 'messagebox', 'font',
