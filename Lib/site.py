@@ -712,6 +712,15 @@ def main():
     sethelper()
     if not sys.flags.isolated:
         enablerlcompleter()
+    # If we've been built with CinderX support there will be an init_cinderx.py
+    # included in the default module search path. In this case we import it
+    # which will have the side-effect of initializing CinderX. If this module
+    # is missing then we weren't build with CinderX so ignoring the import
+    # error is fine.
+    try:
+        import init_cinderx
+    except ImportError:
+        pass
     execsitecustomize()
     if ENABLE_USER_SITE:
         execusercustomize()
