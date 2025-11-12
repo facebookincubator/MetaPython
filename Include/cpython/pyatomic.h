@@ -544,6 +544,12 @@ _Py_atomic_load_uint32_acquire(const uint32_t *obj);
 static inline Py_ssize_t
 _Py_atomic_load_ssize_acquire(const Py_ssize_t *obj);
 
+static inline void
+_Py_atomic_store_uchar_release(unsigned char *obj, unsigned char value);
+
+static inline unsigned char
+_Py_atomic_load_uchar_acquire(const unsigned char *obj);
+
 
 
 

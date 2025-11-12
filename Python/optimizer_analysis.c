@@ -96,7 +96,7 @@ convert_global_to_const(_PyUOpInstruction *inst, PyObject *obj, bool pop)
     assert(inst->opcode == _LOAD_GLOBAL_MODULE || inst->opcode == _LOAD_GLOBAL_BUILTINS || inst->opcode == _LOAD_ATTR_MODULE);
     assert(PyDict_CheckExact(obj));
     PyDictObject *dict = (PyDictObject *)obj;
-    assert(dict->ma_keys->dk_kind == DICT_KEYS_UNICODE);
+    assert(DK_KIND(dict->ma_keys) == DICT_KEYS_UNICODE);
     PyDictUnicodeEntry *entries = DK_UNICODE_ENTRIES(dict->ma_keys);
     int64_t index = inst->operand1;
     assert(index <= UINT16_MAX);

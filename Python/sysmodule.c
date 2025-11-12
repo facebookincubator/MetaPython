@@ -4138,7 +4138,13 @@ _PySys_Create(PyThreadState *tstate, PyObject **sysmod_p)
     if (lazy_modules == NULL) {
         goto error;
     }
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
     interp->lazy_modules = lazy_modules;
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#else
+    interp->lazy_modules = lazy_modules;
+#endif
 #endif
 
     PyObject *sysmod = _PyModule_CreateInitialized(&sysmodule, PYTHON_API_VERSION);
@@ -4165,7 +4171,7 @@ _PySys_Create(PyThreadState *tstate, PyObject **sysmod_p)
     }
 
 #ifdef ENABLE_LAZY_IMPORTS
-    if (PyDict_SetItemString(sysdict, "lazy_modules", interp->lazy_modules) < 0) {
+    if (PyDict_SetItemString(sysdict, "lazy_modules", lazy_modules) < 0) {
         goto error;
     }
 #endif

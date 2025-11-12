@@ -3874,7 +3874,17 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
 {
     int ret = 1;
     assert(tstate->interp->lazy_modules != NULL);
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+    PyObject *eager_imports = Py_XNewRef(tstate->interp->eager_imports);
+    PyObject *excluding_modules = Py_XNewRef(tstate->interp->excluding_modules);
+    PyObject *lazy_modules = Py_XNewRef(tstate->interp->lazy_modules);
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#else
+    PyObject *eager_imports = tstate->interp->eager_imports;
+    PyObject *excluding_modules = tstate->interp->excluding_modules;
     PyObject *lazy_modules = tstate->interp->lazy_modules;
+#endif
     Py_INCREF(name);
     PyObject *parent = NULL;
     PyObject *child = NULL;
@@ -3883,7 +3893,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
     PyObject *lazy_submodules;
 
     /* Check if the import has explicitly been marked as an eager import. */
-    if (tstate->interp->eager_imports != NULL) {
+    if (eager_imports != NULL) {
         Py_ssize_t size = 0;
         if (fromlist != NULL && fromlist != Py_None) {
             assert(PyTuple_CheckExact(fromlist));
@@ -3895,7 +3905,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
                 if (from_name == NULL) {
                     goto error;
                 }
-                int found = PySequence_Contains(tstate->interp->eager_imports, from_name);
+                int found = PySequence_Contains(eager_imports, from_name);
                 Py_DECREF(from_name);
                 if (found < 0) {
                     goto error;
@@ -3909,7 +3919,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
         }
         /* If there's no explicit fromlist, check the module's name. */
         if (size == 0) {
-            int found = PySequence_Contains(tstate->interp->eager_imports, name);
+            int found = PySequence_Contains(eager_imports, name);
             if (found < 0) {
                 goto error;
             }
@@ -3940,7 +3950,7 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
     /* Break the `import mod1.mod2.mod3.mod4` statement into individual modules.
      * For each `modA.modB` in the import, register `modB` as a lazy submodule
      * of `modA`. */
-    PyObject *filter = tstate->interp->excluding_modules;
+    PyObject *filter = excluding_modules;
     while (true) {
         Py_ssize_t dot = PyUnicode_FindChar(name, '.', 0, PyUnicode_GET_LENGTH(name), -1);
         if (dot < 0) {
@@ -4045,6 +4055,11 @@ add_lazy_modules(PyThreadState *tstate, PyObject *builtins, PyObject *name, PyOb
     Py_XDECREF(child);
     Py_XDECREF(parent);
     Py_DECREF(name);
+#ifdef Py_GIL_DISABLED
+    Py_XDECREF(eager_imports);
+    Py_XDECREF(excluding_modules);
+    Py_XDECREF(lazy_modules);
+#endif
     return ret;
 }
 
@@ -4500,11 +4515,25 @@ PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
     assert(interp != NULL);
     assert(interp->lazy_imports != -1);
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&interp->lazy_imports_mutex);
+    int lazy_imports = interp->lazy_imports;
+    PyObject *excluding_modules = Py_XNewRef(interp->excluding_modules);
+    PyObject *eager_imports = Py_XNewRef(interp->eager_imports);
+    PyObject *new_excluding_modules = excluding_modules;
+    PyObject *new_eager_imports = eager_imports;
+    PyMutex_Unlock(&interp->lazy_imports_mutex);
+#else
+    int lazy_imports = interp->lazy_imports;
+    PyObject *excluding_modules = interp->excluding_modules;
+    PyObject *eager_imports = interp->eager_imports;
+#endif
+
     result = PyTuple_Pack(
         3,
-        interp->lazy_imports ? Py_True : Py_False,
-        interp->excluding_modules == NULL ? Py_None : interp->excluding_modules,
-        interp->eager_imports == NULL ? Py_None : interp->eager_imports
+        lazy_imports ? Py_True : Py_False,
+        excluding_modules == NULL ? Py_None : excluding_modules,
+        eager_imports == NULL ? Py_None : eager_imports
     );
     if (result == NULL) {
         goto error;
@@ -4517,8 +4546,12 @@ PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
 
     if (excluding != NULL) {
         if (Py_IsNone(excluding)) {
+#ifdef Py_GIL_DISABLED
+            new_excluding_modules = NULL;
+#else
             Py_XDECREF(interp->excluding_modules);
             interp->excluding_modules = NULL;
+#endif
         } else {
             PyObject *empty = PyUnicode_New(0, 0);
             if (empty == NULL) {
@@ -4529,15 +4562,23 @@ PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
                 goto error;
             }
             Py_DECREF(empty);
+#ifdef Py_GIL_DISABLED
+            new_excluding_modules = Py_NewRef(excluding);
+#else
             Py_XDECREF(interp->excluding_modules);
             interp->excluding_modules = Py_NewRef(excluding);
+#endif
         }
     }
 
     if (eager != NULL) {
         if (Py_IsNone(eager)) {
+#ifdef Py_GIL_DISABLED
+            new_eager_imports = NULL;
+#else
             Py_XDECREF(interp->eager_imports);
             interp->eager_imports = NULL;
+#endif
         } else {
             PyObject *empty = PyUnicode_New(0, 0);
             if (empty == NULL) {
@@ -4548,20 +4589,53 @@ PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
                 goto error;
             }
             Py_DECREF(empty);
+#ifdef Py_GIL_DISABLED
+            new_eager_imports = Py_NewRef(eager);
+#else
             Py_XDECREF(interp->eager_imports);
             interp->eager_imports = Py_NewRef(eager);
+#endif
         }
     }
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&interp->lazy_imports_mutex);
+
+    if (new_excluding_modules != excluding_modules) {
+        interp->excluding_modules = new_excluding_modules;
+    }
+    if (new_eager_imports != eager_imports) {
+        interp->eager_imports = new_eager_imports;
+    }
+#endif
     interp->lazy_imports = Py_IsNone(enabled) ? interp->config.lazy_imports : _enabled;
 
     ++_PyImport_LazyImportsCacheSeq;
     Py_XDECREF(_PyImport_LazyImportsCacheSeqObj);
     _PyImport_LazyImportsCacheSeqObj = NULL;
+#ifdef Py_GIL_DISABLED
+    PyMutex_Unlock(&interp->lazy_imports_mutex);
 
+    if (new_excluding_modules != excluding_modules) {
+        Py_XDECREF(excluding_modules);
+    }
+    if (new_eager_imports != eager_imports) {
+        Py_XDECREF(eager_imports);
+    }
+#endif
+
+
+#ifdef Py_GIL_DISABLED
+    Py_XDECREF(excluding_modules);
+    Py_XDECREF(eager_imports);
+#endif
     return result;
 
   error:
+#ifdef Py_GIL_DISABLED
+    Py_XDECREF(excluding_modules);
+    Py_XDECREF(eager_imports);
+#endif
     Py_XDECREF(result);
     return NULL;
 }
@@ -4573,9 +4647,17 @@ _PyImport_SetLazyImportsInModule(PyObject *enabled)
     PyThreadState *tstate = _PyThreadState_GET();
     assert(tstate != NULL);
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+    int lazy_imports = tstate->interp->lazy_imports;
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#else
+    int lazy_imports = tstate->interp->lazy_imports;
+#endif
+
     result = PyTuple_Pack(
         1,
-        tstate->interp->lazy_imports ? Py_True : Py_False);
+        lazy_imports ? Py_True : Py_False);
     if (result == NULL) {
         goto error;
     }
@@ -4585,7 +4667,13 @@ _PyImport_SetLazyImportsInModule(PyObject *enabled)
         goto error;
     }
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+#endif
     tstate->interp->lazy_imports = _enabled;
+#ifdef Py_GIL_DISABLED
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#endif
 
     return result;
 
@@ -4683,29 +4771,53 @@ has_lazy_imports_enabled_cached(PyObject *lazy_imports_enabled)
 static int
 is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
 {
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+#endif
     int lazy_imports = tstate->interp->lazy_imports;
     assert(lazy_imports != -1);
     if (!lazy_imports) {
+#ifdef Py_GIL_DISABLED
+        PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#endif
         return 0;
     }
 
     PyObject *filter = tstate->interp->excluding_modules;
+#ifdef Py_GIL_DISABLED
+    if (filter != NULL) {
+        Py_INCREF(filter);
+    }
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#endif
     if (filter == NULL) {
+#ifdef Py_GIL_DISABLED
+        Py_XDECREF(filter);
+#endif
         return 1;
     }
 
     if (frame->f_globals == NULL || !PyDict_CheckExact(frame->f_globals)) {
+#ifdef Py_GIL_DISABLED
+        Py_XDECREF(filter);
+#endif
         return 0;
     }
 
     PyObject *modname  = PyDict_GetItem(frame->f_globals, &_Py_ID(__name__));
     if (modname == NULL || Py_IsNone(modname)) {
+#ifdef Py_GIL_DISABLED
+        Py_XDECREF(filter);
+#endif
         return 0;
     }
 
     PyObject *lazy_imports_enabled  = PyDict_GetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__));
     if (!has_lazy_imports_enabled_cached(lazy_imports_enabled)) {
         int eager = PySequence_Contains(filter, modname);
+#ifdef Py_GIL_DISABLED
+        Py_XDECREF(filter);
+#endif
         if (eager == -1) {
             _PyErr_Clear(tstate);
             return 0;
@@ -4714,6 +4826,9 @@ is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
         lazy_imports = eager ? 0 : 1;
         PyObject *cache = PyTuple_New(2);
         if (cache != NULL) {
+#ifdef Py_GIL_DISABLED
+            PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+#endif
             if (_PyImport_LazyImportsCacheSeqObj == NULL) {
                 _PyImport_LazyImportsCacheSeqObj = PyLong_FromLong(_PyImport_LazyImportsCacheSeq);
                 if (_PyImport_LazyImportsCacheSeqObj == NULL) {
@@ -4723,15 +4838,25 @@ is_lazy_imports_active(PyThreadState *tstate, _PyInterpreterFrame *frame)
             if (_PyImport_LazyImportsCacheSeqObj != NULL) {
                 PyTuple_SET_ITEM(cache, 0, PyBool_FromLong(lazy_imports));
                 PyTuple_SET_ITEM(cache, 1, Py_NewRef(_PyImport_LazyImportsCacheSeqObj));
+#ifdef Py_GIL_DISABLED
+                PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#endif
                 if (PyDict_SetItem(frame->f_globals, &_Py_ID(__lazy_imports_enabled__), cache) == -1) {
                     _PyErr_Clear(tstate);
                 }
+            } else {
+#ifdef Py_GIL_DISABLED
+                PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+#endif
             }
             Py_DECREF(cache);
         } else {
             _PyErr_Clear(tstate);
         }
     } else {
+#ifdef Py_GIL_DISABLED
+        Py_XDECREF(filter);
+#endif
         lazy_imports = PyObject_IsTrue(PyTuple_GET_ITEM(lazy_imports_enabled, 0));
         if (lazy_imports == -1) {
             _PyErr_Clear(tstate);
@@ -4752,7 +4877,14 @@ int
 PyImport_IsLazyImportsEnabled(void)
 {
     PyThreadState *tstate = _PyThreadState_GET();
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
+    int result = tstate->interp->lazy_imports;
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+    return result;
+#else
     return tstate->interp->lazy_imports;
+#endif
 }
 
 /*[clinic input]
@@ -4869,7 +5001,17 @@ _imp__set_lazy_attributes_impl(PyObject *module, PyObject *child_module,
     PyObject *lazy_module_attr = NULL;
     PyObject *ret = NULL;
 
+#ifdef Py_GIL_DISABLED
+    PyMutex_Lock(&tstate->interp->lazy_imports_mutex);
     PyObject *lazy_modules = tstate->interp->lazy_modules;
+    if (lazy_modules != NULL) {
+        Py_INCREF(lazy_modules);
+    }
+    PyMutex_Unlock(&tstate->interp->lazy_imports_mutex);
+#else
+    PyObject *lazy_modules = tstate->interp->lazy_modules;
+#endif
+
     if (lazy_modules != NULL) {
         PyObject *lazy_submodules = PyDict_GetItemWithError(lazy_modules, name);
         if (lazy_submodules == NULL) {
@@ -4912,6 +5054,9 @@ _imp__set_lazy_attributes_impl(PyObject *module, PyObject *child_module,
     ret = Py_NewRef(Py_None);
 
   error:
+#ifdef Py_GIL_DISABLED
+    Py_XDECREF(lazy_modules);
+#endif
     Py_XDECREF(child_dict);
     Py_XDECREF(lazy_module_attr);
     return ret;

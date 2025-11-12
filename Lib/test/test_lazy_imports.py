@@ -10,9 +10,6 @@ import unittest
 
 class LazyImportsTest(unittest.TestCase):
     def test_lazy_imports(self):
-        # TODO-META: Remove when Lazy Imports is added to 3.14t
-        if not sys._is_gil_enabled():
-            return
         original_lazy_modules = sys.lazy_modules.copy()
         original_modules = sys.modules.copy()
         try:

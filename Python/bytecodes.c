@@ -2391,7 +2391,7 @@ dummy_func(
             assert(dict != NULL);
             PyDictKeysObject *keys = FT_ATOMIC_LOAD_PTR_ACQUIRE(dict->ma_keys);
             DEOPT_IF(FT_ATOMIC_LOAD_UINT32_RELAXED(keys->dk_version) != dict_version);
-            assert(keys->dk_kind == DICT_KEYS_UNICODE);
+            assert(DK_KIND(keys) == DICT_KEYS_UNICODE);
             assert(index < FT_ATOMIC_LOAD_SSIZE_RELAXED(keys->dk_nentries));
             PyDictUnicodeEntry *ep = DK_UNICODE_ENTRIES(keys) + index;
             PyObject *attr_o = FT_ATOMIC_LOAD_PTR_RELAXED(ep->me_value);
@@ -2433,7 +2433,7 @@ dummy_func(
             }
 
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg>>1);
-            if (dk->dk_kind != DICT_KEYS_UNICODE) {
+            if (DK_KIND(dk) != DICT_KEYS_UNICODE) {
                 DEOPT_IF(true);
             }
             PyDictUnicodeEntry *ep = DK_UNICODE_ENTRIES(dk) + hint;
@@ -2904,7 +2904,7 @@ dummy_func(
 
         inst(IMPORT_NAME, (level, fromlist -- res)) {
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-#if defined(ENABLE_LAZY_IMPORTS) && !defined(Py_GIL_DISABLED)
+#if defined(ENABLE_LAZY_IMPORTS)
             PyObject *res_o;
             bool active = _PyImport_IsLazyImportsActive(tstate);
             if (active) {

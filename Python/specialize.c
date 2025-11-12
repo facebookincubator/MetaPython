@@ -773,7 +773,7 @@ static int
 specialize_module_load_attr_lock_held(PyDictObject *dict, _Py_CODEUNIT *instr, PyObject *name)
 {
     _PyAttrCache *cache = (_PyAttrCache *)(instr + 1);
-    if (dict->ma_keys->dk_kind != DICT_KEYS_UNICODE) {
+    if (DK_KIND(dict->ma_keys) != DICT_KEYS_UNICODE) {
         SPECIALIZATION_FAIL(LOAD_ATTR, SPEC_FAIL_ATTR_NON_STRING);
         return -1;
     }

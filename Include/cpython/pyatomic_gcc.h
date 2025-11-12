@@ -600,6 +600,14 @@ static inline Py_ssize_t
 _Py_atomic_load_ssize_acquire(const Py_ssize_t *obj)
 { return __atomic_load_n(obj, __ATOMIC_ACQUIRE); }
 
+static inline unsigned char
+_Py_atomic_load_uchar_acquire(const unsigned char *obj)
+{ return __atomic_load_n(obj, __ATOMIC_ACQUIRE); }
+
+static inline void
+_Py_atomic_store_uchar_release(unsigned char *obj, unsigned char value)
+{ __atomic_store_n(obj, value, __ATOMIC_RELEASE); }
+
 // --- _Py_atomic_fence ------------------------------------------------------
 
 static inline void

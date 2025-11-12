@@ -174,8 +174,23 @@ PyAPI_FUNC(void) _PyDict_EnsureSharedOnRead(PyDictObject *mp);
 typedef enum {
     DICT_KEYS_GENERAL = 0,
     DICT_KEYS_UNICODE = 1,
-    DICT_KEYS_SPLIT = 2
+    DICT_KEYS_SPLIT = 2,
+    DICT_KEYS_LAZY_IMPORTS = 0x80,
 } DictKeysKind;
+
+#define DICT_KEYS_KIND_MASK 0x03
+#define DICT_KEYS_LAZY_IMPORTS_MASK 0x80
+
+#ifdef ENABLE_LAZY_IMPORTS
+#define LOAD_SHARED_UCHAR(obj) _Py_atomic_load_uchar_acquire(&obj)
+#define STORE_SHARED_UCHAR(obj, value) _Py_atomic_store_uchar_release(&obj, value)
+#define DK_KIND(dk) (LOAD_SHARED_UCHAR(dk->dk_kind) & DICT_KEYS_KIND_MASK)
+#define DK_LAZY_IMPORTS(dk) (LOAD_SHARED_UCHAR(dk->dk_kind) & DICT_KEYS_LAZY_IMPORTS)
+#else
+#define LOAD_SHARED_UCHAR(obj) obj
+#define STORE_SHARED_UCHAR(obj, value) obj = value
+#define DK_KIND(dk) (dk->dk_kind)
+#endif
 
 /* See dictobject.c for actual layout of DictKeysObject */
 struct _dictkeysobject {
@@ -187,15 +202,8 @@ struct _dictkeysobject {
     /* Size of the hash table (dk_indices) by bytes. */
     uint8_t dk_log2_index_bytes;
 
-    /* Kind of keys */
-#ifdef ENABLE_LAZY_IMPORTS
-    uint8_t dk_kind: 7;
-
-    /* Contains lazy imports. Assume there are lazy import objects unless otherwise specified. */
-    uint8_t dk_lazy_imports : 1;
-#else
+    /* Kind of keys (use `DICT_KEYS_KIND_MASK` to get kind, `DICT_KEYS_LAZY_IMPORTS` flag for lazy imports) */
     uint8_t dk_kind;
-#endif
 
 #ifdef Py_GIL_DISABLED
     /* Lock used to protect shared keys */
@@ -263,15 +271,15 @@ static inline void* _DK_ENTRIES(PyDictKeysObject *dk) {
 }
 
 static inline PyDictKeyEntry* DK_ENTRIES(PyDictKeysObject *dk) {
-    assert(dk->dk_kind == DICT_KEYS_GENERAL);
+    assert(DK_KIND(dk) == DICT_KEYS_GENERAL);
     return (PyDictKeyEntry*)_DK_ENTRIES(dk);
 }
 static inline PyDictUnicodeEntry* DK_UNICODE_ENTRIES(PyDictKeysObject *dk) {
-    assert(dk->dk_kind != DICT_KEYS_GENERAL);
+    assert(DK_KIND(dk) != DICT_KEYS_GENERAL);
     return (PyDictUnicodeEntry*)_DK_ENTRIES(dk);
 }
 
-#define DK_IS_UNICODE(dk) ((dk)->dk_kind != DICT_KEYS_GENERAL)
+#define DK_IS_UNICODE(dk) (DK_KIND(dk) != DICT_KEYS_GENERAL)
 
 #define DICT_VERSION_INCREMENT (1 << (DICT_MAX_WATCHERS + DICT_WATCHED_MUTATION_BITS))
 #define DICT_WATCHER_MASK ((1 << DICT_MAX_WATCHERS) - 1)

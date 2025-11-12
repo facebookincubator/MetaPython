@@ -3339,7 +3339,7 @@
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
             }
-            assert(keys->dk_kind == DICT_KEYS_UNICODE);
+            assert(DK_KIND(keys) == DICT_KEYS_UNICODE);
             assert(index < FT_ATOMIC_LOAD_SSIZE_RELAXED(keys->dk_nentries));
             PyDictUnicodeEntry *ep = DK_UNICODE_ENTRIES(keys) + index;
             PyObject *attr_o = FT_ATOMIC_LOAD_PTR_RELAXED(ep->me_value);
@@ -3401,7 +3401,7 @@
                 }
             }
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg>>1);
-            if (dk->dk_kind != DICT_KEYS_UNICODE) {
+            if (DK_KIND(dk) != DICT_KEYS_UNICODE) {
                 if (true) {
                     UOP_STAT_INC(uopcode, miss);
                     JUMP_TO_JUMP_TARGET();
@@ -4089,7 +4089,7 @@
             fromlist = stack_pointer[-1];
             level = stack_pointer[-2];
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-            #if defined(ENABLE_LAZY_IMPORTS) && !defined(Py_GIL_DISABLED)
+            #if defined(ENABLE_LAZY_IMPORTS)
             PyObject *res_o;
             _PyFrame_SetStackPointer(frame, stack_pointer);
             bool active = _PyImport_IsLazyImportsActive(tstate);

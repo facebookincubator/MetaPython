@@ -980,6 +980,7 @@ struct _is {
     PyObject *excluding_modules;
     PyObject *eager_imports;
     PyObject *lazy_modules;
+    PyMutex lazy_imports_mutex;
 #endif
 };
 

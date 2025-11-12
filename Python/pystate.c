@@ -416,6 +416,7 @@ _Py_COMP_DIAG_POP
         &(runtime)->allocators.mutex, \
         &(runtime)->_main_interpreter.types.mutex, \
         &(runtime)->_main_interpreter.code_state.mutex, \
+        &(runtime)->_main_interpreter.lazy_imports_mutex, \
     }
 
 static void

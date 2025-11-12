@@ -247,6 +247,7 @@ import_star(PyThreadState* tstate, PyObject *from)
             if (!_PyErr_Occurred(tstate)) {
                 _PyErr_SetString(tstate, PyExc_SystemError, "Lazy Import cycle");
             }
+            Py_DECREF(locals);
             return NULL;
         }
         err = import_all_from(tstate, locals, mod);
