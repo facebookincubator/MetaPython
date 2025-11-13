@@ -1154,6 +1154,30 @@ _Py_atomic_load_ssize_acquire(const Py_ssize_t *obj)
 #endif
 }
 
+static inline void
+_Py_atomic_store_uchar_release(unsigned char *obj, unsigned char value)
+{
+#if defined(_M_X64) || defined(_M_IX86)
+    *(unsigned char volatile *)obj = value;
+#elif defined(_M_ARM64)
+    __stlr8((unsigned __int8 volatile *)obj, (unsigned __int8)value);
+#else
+#  error "no implementation of _Py_atomic_store_uchar_release"
+#endif
+}
+
+static inline unsigned char
+_Py_atomic_load_uchar_acquire(const unsigned char *obj)
+{
+#if defined(_M_X64) || defined(_M_IX86)
+    return *(unsigned char volatile *)obj;
+#elif defined(_M_ARM64)
+    return (unsigned char)__ldar8((unsigned __int8 volatile *)obj);
+#else
+#  error "no implementation of _Py_atomic_load_uchar_acquire"
+#endif
+}
+
 // --- _Py_atomic_fence ------------------------------------------------------
 
  static inline void

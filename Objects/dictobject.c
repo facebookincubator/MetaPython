@@ -1941,7 +1941,7 @@ Py_ssize_t
 _Py_dict_lookup_threadsafe_stackref(PyDictObject *mp, PyObject *key, Py_hash_t hash, _PyStackRef *value_addr)
 {
 #ifdef ENABLE_LAZY_IMPORTS
-start:
+start:;
 #endif
     PyDictKeysObject *dk = _Py_atomic_load_ptr(&mp->ma_keys);
     if (DK_KIND(dk) == DICT_KEYS_UNICODE && PyUnicode_CheckExact(key)) {
