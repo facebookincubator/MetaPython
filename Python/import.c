@@ -2355,28 +2355,20 @@ is_builtin(PyObject *name)
     return 0;
 }
 
-
-// START META PATCH
 static PyModInitFunction
 lookup_inittab_initfunc(const struct _Py_ext_module_loader_info* info)
 {
-    struct _inittab *found = NULL;
     for (struct _inittab *p = INITTAB; p->name != NULL; p++) {
         if (_PyUnicode_EqualToASCIIString(info->name, p->name)) {
-            found = p;
+            return (PyModInitFunction)p->initfunc;
         }
     }
-    if (found == NULL) {
-        // not found
-        return NULL;
-    }
-    return (PyModInitFunction)found->initfunc;
+    // not found
+    return NULL;
 }
 
-
-
 static PyObject*
-create_builtin_ex(
+create_builtin(
     PyThreadState *tstate, PyObject *name,
     PyObject *spec,
     PyModInitFunction initfunc)
@@ -2444,12 +2436,36 @@ finally:
     return mod;
 }
 
-static PyObject*
-create_builtin(PyThreadState *tstate, PyObject *name, PyObject *spec)
+PyObject*
+PyImport_CreateModuleFromInitfunc(
+    PyObject *spec, PyObject *(*initfunc)(void))
 {
-    return create_builtin_ex(tstate, name, spec, NULL);
+    if (initfunc == NULL) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    PyThreadState *tstate = _PyThreadState_GET();
+
+    PyObject *name = PyObject_GetAttr(spec, &_Py_ID(name));
+    if (name == NULL) {
+        return NULL;
+    }
+
+    if (!PyUnicode_Check(name)) {
+        PyErr_Format(PyExc_TypeError,
+                     "spec name must be string, not %T", name);
+        Py_DECREF(name);
+        return NULL;
+    }
+
+    PyObject *mod = create_builtin(tstate, name, spec, initfunc);
+    Py_DECREF(name);
+    return mod;
 }
 
+// START META PATCH
+// TODO: migrate to the upstream version, PyImport_CreateModuleFromInitfunc, and delete this
 PyObject*
 _Ci_PyImport_CreateBuiltinFromSpecAndInitfunc(
     PyObject *spec, PyObject* (*initfunc)(void))
@@ -2469,7 +2485,7 @@ _Ci_PyImport_CreateBuiltinFromSpecAndInitfunc(
         return NULL;
     }
 
-    PyObject *mod = create_builtin_ex(tstate, name, spec, initfunc);
+    PyObject *mod = create_builtin(tstate, name, spec, initfunc);
     Py_DECREF(name);
     return mod;
 }
@@ -3243,7 +3259,7 @@ bootstrap_imp(PyThreadState *tstate)
     }
 
     // Create the _imp module from its definition.
-    PyObject *mod = create_builtin(tstate, name, spec);
+    PyObject *mod = create_builtin(tstate, name, spec, NULL);
     Py_CLEAR(name);
     Py_DECREF(spec);
     if (mod == NULL) {
@@ -5802,7 +5818,7 @@ _imp_create_builtin(PyObject *module, PyObject *spec)
         return NULL;
     }
 
-    PyObject *mod = create_builtin(tstate, name, spec);
+    PyObject *mod = create_builtin(tstate, name, spec, NULL);
     Py_DECREF(name);
     return mod;
 }
