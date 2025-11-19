@@ -107,6 +107,9 @@ WIN32 is still required for the locale module.
 #endif
 #endif
 
+/* Define if you want to enable lazy imports */
+#define ENABLE_LAZY_IMPORTS 1
+
 /* Compiler specific defines */
 
 /* ------------------------------------------------------------------------*/
