@@ -1,6 +1,11 @@
 """Unit tests for collections.py."""
-
-import array
+# Meta Lazy Imports compatibility: Eagerly import `array` so `array.array` is
+# registered with `_collections_abc.Mapping` before refleak tests save ABC state.
+# This is necessary since `dash_R_cleanup()` clears and restores ABC registries.
+try:
+    import array
+except Exception:
+    pass
 import collections
 import copy
 import doctest

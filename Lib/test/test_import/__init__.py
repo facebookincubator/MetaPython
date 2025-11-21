@@ -28,7 +28,7 @@ import unittest
 from unittest import mock
 import _imp
 
-from test.support import os_helper
+from test.support import os_helper, refleak_helper
 from test.support import (
     STDLIB_DIR,
     swap_attr,
@@ -3168,6 +3168,12 @@ class SinglephaseInitTests(unittest.TestCase):
 
     @requires_subinterpreters
     def test_basic_multiple_interpreters_main_no_reset(self):
+        # Skip during refleak testing with lazy imports
+        if refleak_helper.hunting_for_refleaks() and importlib.is_lazy_imports_enabled():
+            raise unittest.SkipTest(
+                "TODO(T245974066): Fix Lazy Imports refleak with Single-Phase Initialization Modules"
+            )
+
         # without resetting; already loaded in main interpreter
 
         # At this point:
@@ -3312,6 +3318,12 @@ class SinglephaseInitTests(unittest.TestCase):
 
     @requires_subinterpreters
     def test_basic_multiple_interpreters_reset_each(self):
+        # Skip during refleak testing with lazy imports
+        if refleak_helper.hunting_for_refleaks() and importlib.is_lazy_imports_enabled():
+            raise unittest.SkipTest(
+                "TODO(T245974066): Fix Lazy Imports refleak with Single-Phase Initialization Modules"
+            )
+
         # resetting between each interpreter
 
         # At this point:

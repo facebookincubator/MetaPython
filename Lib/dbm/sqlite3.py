@@ -1,8 +1,14 @@
 import os
-import sqlite3
 from pathlib import Path
 from contextlib import suppress, closing
 from collections.abc import MutableMapping
+
+# Meta Lazy Imports compatibility: Eagerly import `sqlite3` so the ImportError
+# is raised right away
+try:
+    import sqlite3
+except ImportError:
+    raise ImportError("No module named '_sqlite3'")
 
 BUILD_TABLE = """
   CREATE TABLE IF NOT EXISTS Dict (

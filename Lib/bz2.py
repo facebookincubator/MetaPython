@@ -15,7 +15,8 @@ import io
 import os
 
 from _bz2 import BZ2Compressor, BZ2Decompressor
-
+# Meta Lazy Imports compatibility: Force _bz2 to be imported
+BZ2Compressor
 
 # Value 0 no longer used
 _MODE_READ     = 1

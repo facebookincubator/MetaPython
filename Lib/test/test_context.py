@@ -1,7 +1,13 @@
 import sys
 import collections.abc
 import concurrent.futures
-import contextvars
+# Meta Lazy Imports compatibility: Eagerly import contextvars so Context is registered
+# with `_collections_abc.Mapping` before refleak tests save ABC state.
+# This is necessary since `dash_R_cleanup()` clears and restores ABC registries.
+try:
+    import contextvars
+except Exception:
+    pass
 import functools
 import gc
 import random
