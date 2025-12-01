@@ -3,7 +3,10 @@ import functools
 import importlib
 import re
 import sys
-import warnings
+try:
+    import warnings
+except:
+    raise
 
 
 def import_deprecated(name):
