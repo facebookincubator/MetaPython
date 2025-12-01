@@ -995,7 +995,7 @@ else:
 
 try:
     # try importing cinder to see if module is available
-    from cinder import _get_arg0_from_pyframe # noqa
+    from _cinder import _get_arg0_from_pyframe # noqa
     from .base_futures import _asyncio_async_lazy_value_metadata_entrypoint_, CycleDetected # noqa
 
     # only add this type if Cinder is present

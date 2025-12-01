@@ -8989,7 +8989,7 @@ module_init(void)
     GET_MOD_ATTR(asyncio_alv_metadata_entrypoint_name, "_METADATA_ENTRYPOINT_NAME_")
     GET_MOD_ATTR(asyncio_CycleDetected, "CycleDetected")
     {
-        PyObject *m = PyImport_ImportModule("cinder");
+        PyObject *m = PyImport_ImportModule("_cinder");
         if (m != NULL) {
             cinder_get_arg0_from_pyframe = PyObject_GetAttrString(m, "_get_arg0_from_pyframe");
             Py_CLEAR(m);
