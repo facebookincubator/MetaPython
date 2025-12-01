@@ -2355,12 +2355,12 @@ is_builtin(PyObject *name)
     return 0;
 }
 
-static PyModInitFunction
-lookup_inittab_initfunc(const struct _Py_ext_module_loader_info* info)
+static struct _inittab*
+lookup_inittab_entry(const struct _Py_ext_module_loader_info* info)
 {
     for (struct _inittab *p = INITTAB; p->name != NULL; p++) {
         if (_PyUnicode_EqualToASCIIString(info->name, p->name)) {
-            return (PyModInitFunction)p->initfunc;
+            return p;
         }
     }
     // not found
@@ -2404,13 +2404,18 @@ create_builtin(
 
     PyModInitFunction p0 = initfunc;
     if (p0 == NULL) {
-        p0 = lookup_inittab_initfunc(&info);
-        if (p0 == NULL) {
-            /* Cannot re-init internal module ("sys" or "builtins") */
-            assert(is_core_module(tstate->interp, info.name, info.path));
-            mod = import_add_module(tstate, info.name);
+        struct _inittab *entry = lookup_inittab_entry(&info);
+        if (entry == NULL) {
+            mod = Py_NewRef(Py_None);
             goto finally;
         }
+        p0 = (PyModInitFunction)entry->initfunc;
+    }
+    if (p0 == NULL) {
+        /* Cannot re-init internal module ("sys" or "builtins") */
+        assert(is_core_module(tstate->interp, info.name, info.path));
+        mod = import_add_module(tstate, info.name);
+        goto finally;
     }
 
 #ifdef Py_GIL_DISABLED

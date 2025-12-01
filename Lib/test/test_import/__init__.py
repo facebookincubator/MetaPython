@@ -1250,6 +1250,19 @@ os.does_not_exist
                 origin = "a\x00b"
             _imp.create_dynamic(Spec2())
 
+    def test_create_builtin(self):
+        for internal_mod in (sys, builtins):
+            class Spec:
+                name = internal_mod.__name__
+
+            self.assertIs(_imp.create_builtin(Spec()), internal_mod)
+
+        class Spec:
+            name = "nonexistent_lib"
+
+        # gh-142029
+        self.assertIs(_imp.create_builtin(Spec()), None)
+
 
 @skip_if_dont_write_bytecode
 class FilePermissionTests(unittest.TestCase):
