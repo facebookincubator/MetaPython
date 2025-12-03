@@ -1217,9 +1217,9 @@ are always available.  They are listed here in alphabetical order.
       Added the *strict* parameter.
 
 
-.. function:: max(iterable, *, key=None)
-              max(iterable, *, default, key=None)
-              max(arg1, arg2, *args, key=None)
+.. function:: max(iterable, /, *, key=None)
+              max(iterable, /, *, default, key=None)
+              max(arg1, arg2, /, *args, key=None)
 
    Return the largest item in an iterable or the largest of two or more
    arguments.
@@ -1255,9 +1255,9 @@ are always available.  They are listed here in alphabetical order.
    :ref:`typememoryview` for more information.
 
 
-.. function:: min(iterable, *, key=None)
-              min(iterable, *, default, key=None)
-              min(arg1, arg2, *args, key=None)
+.. function:: min(iterable, /, *, key=None)
+              min(iterable, /, *, default, key=None)
+              min(arg1, arg2, /, *args, key=None)
 
    Return the smallest item in an iterable or the smallest of two or more
    arguments.
@@ -1580,7 +1580,7 @@ are always available.  They are listed here in alphabetical order.
    ``pow(base, exp) % mod``). The two-argument form ``pow(base, exp)`` is
    equivalent to using the power operator: ``base**exp``.
 
-   The arguments must have numeric types.  With mixed operand types, the
+   When arguments are builtin numeric types with mixed operand types, the
    coercion rules for binary arithmetic operators apply.  For :class:`int`
    operands, the result has the same type as the operands (after coercion)
    unless the second argument is negative; in that case, all arguments are
@@ -1887,7 +1887,7 @@ are always available.  They are listed here in alphabetical order.
    the same data with other ordering tools such as :func:`max` that rely
    on a different underlying method.  Implementing all six comparisons
    also helps avoid confusion for mixed type comparisons which can call
-   reflected the :meth:`~object.__gt__` method.
+   the reflected :meth:`~object.__gt__` method.
 
    For sorting examples and a brief sorting tutorial, see :ref:`sortinghowto`.
 

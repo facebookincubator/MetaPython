@@ -63,6 +63,12 @@ class ColorSpan(NamedTuple):
 def str_width(c: str) -> int:
     if ord(c) < 128:
         return 1
+    # gh-139246 for zero-width joiner and combining characters
+    if unicodedata.combining(c):
+        return 0
+    category = unicodedata.category(c)
+    if category == "Cf" and c != "\u00ad":
+        return 0
     w = unicodedata.east_asian_width(c)
     if w in ("N", "Na", "H", "A"):
         return 1
@@ -264,6 +270,12 @@ def is_soft_keyword_used(*tokens: TI | None) -> bool:
             return True
         case (TI(string="case"), TI(string="_"), TI(string=":")):
             return True
+        case (
+            None | TI(T.NEWLINE) | TI(T.INDENT) | TI(T.DEDENT) | TI(string=":"),
+            TI(string="type"),
+            TI(T.NAME, string=s)
+        ):
+            return not keyword.iskeyword(s)
         case _:
             return False
 

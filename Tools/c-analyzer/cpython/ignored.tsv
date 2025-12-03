@@ -24,6 +24,7 @@ Modules/posixmodule.c	os_dup2_impl	dup3_works	-
 
 ## guards around resource init
 Python/thread_pthread.h	PyThread__init_thread	lib_initialized	-
+Modules/_struct.c	-	endian_tables_init_once	-
 
 ##-----------------------
 ## other values (not Python-specific)
@@ -227,6 +228,7 @@ Modules/_datetimemodule.c	datetime_isoformat	specs	-
 Modules/_datetimemodule.c	parse_hh_mm_ss_ff	correction	-
 Modules/_datetimemodule.c	time_isoformat	specs	-
 Modules/_datetimemodule.c	-	capi_types	-
+Modules/_datetimemodule.c	normalize_century	cache	-
 Modules/_decimal/_decimal.c	-	cond_map_template	-
 Modules/_decimal/_decimal.c	-	dec_signal_string	-
 Modules/_decimal/_decimal.c	-	dflt_ctx	-

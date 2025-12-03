@@ -776,6 +776,32 @@ class GCTests(unittest.TestCase):
             rc, out, err = assert_python_ok('-c', code)
             self.assertEqual(out.strip(), b'__del__ called')
 
+    @unittest.skipIf(Py_GIL_DISABLED, "requires GC generations or increments")
+    def test_gc_debug_stats(self):
+        # Checks that debug information is printed to stderr
+        # when DEBUG_STATS is set.
+        code = """if 1:
+            import gc
+            gc.set_debug(%s)
+            gc.collect()
+            """
+        _, _, err = assert_python_ok("-c", code % "gc.DEBUG_STATS")
+        self.assertRegex(err, b"gc: collecting generation [0-9]+")
+        self.assertRegex(
+            err,
+            b"gc: objects in each generation: [0-9]+ [0-9]+ [0-9]+",
+        )
+        self.assertRegex(
+            err, b"gc: objects in permanent generation: [0-9]+"
+        )
+        self.assertRegex(
+            err,
+            b"gc: done, .* unreachable, .* uncollectable, .* elapsed",
+        )
+
+        _, _, err = assert_python_ok("-c", code % "0")
+        self.assertNotIn(b"elapsed", err)
+
     def test_global_del_SystemExit(self):
         code = """if 1:
             class ClassWithDel:
@@ -1329,6 +1355,7 @@ class GCTogglingTests(unittest.TestCase):
     def tearDown(self):
         gc.disable()
 
+    @unittest.skipIf(Py_GIL_DISABLED, "requires GC generations or increments")
     def test_bug1055820c(self):
         # Corresponds to temp2c.py in the bug report.  This is pretty
         # elaborate.
@@ -1390,10 +1417,11 @@ class GCTogglingTests(unittest.TestCase):
             # The free-threaded build doesn't have multiple generations, so
             # just trigger a GC manually.
             gc.collect()
+        assert not detector.gc_happened
         while not detector.gc_happened:
             i += 1
-            if i > 10000:
-                self.fail("gc didn't happen after 10000 iterations")
+            if i > 100000:
+                self.fail("gc didn't happen after 100000 iterations")
             self.assertEqual(len(ouch), 0)
             junk.append([])  # this will eventually trigger gc
 
@@ -1464,8 +1492,8 @@ class GCTogglingTests(unittest.TestCase):
             gc.collect()
         while not detector.gc_happened:
             i += 1
-            if i > 10000:
-                self.fail("gc didn't happen after 10000 iterations")
+            if i > 50000:
+                self.fail("gc didn't happen after 50000 iterations")
             self.assertEqual(len(ouch), 0)
             junk.append([])  # this will eventually trigger gc
 
@@ -1482,8 +1510,8 @@ class GCTogglingTests(unittest.TestCase):
         detector = GC_Detector()
         while not detector.gc_happened:
             i += 1
-            if i > 10000:
-                self.fail("gc didn't happen after 10000 iterations")
+            if i > 100000:
+                self.fail("gc didn't happen after 100000 iterations")
             junk.append([])  # this will eventually trigger gc
 
         try:
@@ -1493,13 +1521,27 @@ class GCTogglingTests(unittest.TestCase):
             detector = GC_Detector()
             while not detector.gc_happened:
                 i += 1
-                if i > 10000:
+                if i > 100000:
                     break
                 junk.append([])  # this may eventually trigger gc (if it is enabled)
 
-            self.assertEqual(i, 10001)
+            self.assertEqual(i, 100001)
         finally:
             gc.enable()
+
+    # Ensure that setting *threshold0* to zero disables collection.
+    @gc_threshold(0)
+    def test_threshold_zero(self):
+        junk = []
+        i = 0
+        detector = GC_Detector()
+        while not detector.gc_happened:
+            i += 1
+            if i > 50000:
+                break
+            junk.append([])  # this may eventually trigger gc (if it is enabled)
+
+        self.assertEqual(i, 50001)
 
 
 class PythonFinalizationTests(unittest.TestCase):

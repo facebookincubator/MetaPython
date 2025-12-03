@@ -6,6 +6,7 @@
 #include "pycore_call.h"          // _PyObject_VectorcallTstate()
 #endif
 #include "pycore_ceval.h"
+#include "pycore_critical_section.h"  // Py_BEGIN_CRITICAL_SECTION()
 #ifdef ENABLE_LAZY_IMPORTS
 #include "pycore_dict.h"          // _PyDict_GetItemRefKeepLazy()
 #endif
@@ -342,13 +343,8 @@ PyImport_GetModule(PyObject *name)
    if not, create a new one and insert it in the modules dictionary. */
 
 static PyObject *
-import_add_module(PyThreadState *tstate, PyObject *name)
+import_add_module_lock_held(PyObject *modules, PyObject *name)
 {
-    PyObject *modules = get_modules_dict(tstate, false);
-    if (modules == NULL) {
-        return NULL;
-    }
-
     PyObject *m;
     if (PyMapping_GetOptionalItem(modules, name, &m) < 0) {
         return NULL;
@@ -365,6 +361,21 @@ import_add_module(PyThreadState *tstate, PyObject *name)
         return NULL;
     }
 
+    return m;
+}
+
+static PyObject *
+import_add_module(PyThreadState *tstate, PyObject *name)
+{
+    PyObject *modules = get_modules_dict(tstate, false);
+    if (modules == NULL) {
+        return NULL;
+    }
+
+    PyObject *m;
+    Py_BEGIN_CRITICAL_SECTION(modules);
+    m = import_add_module_lock_held(modules, name);
+    Py_END_CRITICAL_SECTION();
     return m;
 }
 

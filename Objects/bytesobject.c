@@ -975,8 +975,10 @@ _PyBytes_FormatEx(const char *format, Py_ssize_t format_len,
             /* 2: size preallocated for %s */
             if (alloc > 2) {
                 res = _PyBytesWriter_Prepare(&writer, res, alloc - 2);
-                if (res == NULL)
+                if (res == NULL) {
+                    Py_XDECREF(temp);
                     goto error;
+                }
             }
 #ifndef NDEBUG
             char *before = res;
@@ -3147,7 +3149,7 @@ PyBytes_Concat(PyObject **pv, PyObject *w)
         return;
     }
 
-    if (Py_REFCNT(*pv) == 1 && PyBytes_CheckExact(*pv)) {
+    if (_PyObject_IsUniquelyReferenced(*pv) && PyBytes_CheckExact(*pv)) {
         /* Only one reference, so we can resize in place */
         Py_ssize_t oldsize;
         Py_buffer wb;
@@ -3232,7 +3234,7 @@ _PyBytes_Resize(PyObject **pv, Py_ssize_t newsize)
         Py_DECREF(v);
         return 0;
     }
-    if (Py_REFCNT(v) != 1) {
+    if (!_PyObject_IsUniquelyReferenced(v)) {
         if (oldsize < newsize) {
             *pv = _PyBytes_FromSize(newsize, 0);
             if (*pv) {

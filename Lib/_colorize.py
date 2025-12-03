@@ -1,4 +1,3 @@
-import io
 import os
 import sys
 
@@ -155,7 +154,7 @@ class ThemeSection(Mapping[str, str]):
         return iter(self.__dataclass_fields__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Argparse(ThemeSection):
     usage: str = ANSIColors.BOLD_BLUE
     prog: str = ANSIColors.BOLD_MAGENTA
@@ -312,7 +311,7 @@ def can_colorize(*, file: IO[str] | IO[bytes] | None = None) -> bool:
 
     try:
         return os.isatty(file.fileno())
-    except io.UnsupportedOperation:
+    except OSError:
         return hasattr(file, "isatty") and file.isatty()
 
 
