@@ -75,7 +75,7 @@ Py_DEPRECATED(3.14) PyAPI_FUNC(PyObject *) _PyDict_Pop(
     PyObject *key,
     PyObject *default_value);
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyAPI_FUNC(int) _PyDict_NextKeepLazy(
     PyObject *mp, Py_ssize_t *pos, PyObject **key, PyObject **value);
 PyAPI_FUNC(int) PyDict_NextWithError(

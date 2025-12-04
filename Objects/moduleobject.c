@@ -744,7 +744,7 @@ _PyModule_ClearDict(PyObject *d)
 
     /* First, clear only names starting with a single underscore */
     pos = 0;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     while (_PyDict_Next(d, &pos, &key, &value, NULL)) {
 #else
     while (PyDict_Next(d, &pos, &key, &value)) {
@@ -769,7 +769,7 @@ _PyModule_ClearDict(PyObject *d)
 
     /* Next, clear all names except for __builtins__ */
     pos = 0;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     while (_PyDict_Next(d, &pos, &key, &value, NULL)) {
 #else
     while (PyDict_Next(d, &pos, &key, &value)) {
@@ -1002,7 +1002,7 @@ _Py_module_getattro_impl(PyModuleObject *m, PyObject *name, int suppress)
     }
     if (suppress == 1) {
         if (PyErr_Occurred()) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             if (PyErr_ExceptionMatches(PyExc_ImportCycleError)) {
                 // ImportCycleError is raised when a lazy object tries to import itself.
                 // In this case, the error should not propagate to the caller and

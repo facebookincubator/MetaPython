@@ -2,19 +2,19 @@
 
 #include "Python.h"
 #include "pycore_audit.h"         // _PySys_Audit()
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_call.h"          // _PyObject_VectorcallTstate()
 #endif
 #include "pycore_ceval.h"
 #include "pycore_critical_section.h"  // Py_BEGIN_CRITICAL_SECTION()
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_dict.h"          // _PyDict_GetItemRefKeepLazy()
 #endif
 #include "pycore_hashtable.h"     // _Py_hashtable_new_full()
 #include "pycore_import.h"        // _PyImport_BootstrapImp()
 #include "pycore_initconfig.h"    // _PyStatus_OK()
 #include "pycore_interp.h"        // struct _import_runtime_state
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_lazyimport.h"    // _PyLazyImport_New()
 #include "pycore_long.h"          // _PyLong_GetZero()
 #endif
@@ -26,7 +26,7 @@
 #include "pycore_pyhash.h"        // _Py_KeyedHash()
 #include "pycore_pylifecycle.h"
 #include "pycore_pymem.h"         // _PyMem_DefaultRawFree()
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_setobject.h"     // _PySet_NextEntry()
 #endif
 #include "pycore_pystate.h"       // _PyInterpreterState_GET()
@@ -45,7 +45,7 @@
 #endif
 
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 /* Forward references */
 static PyObject *import_add_module(PyThreadState *tstate, PyObject *name);
 #endif
@@ -307,7 +307,7 @@ done:
 static void remove_importlib_frames(PyThreadState *tstate);
 
 PyObject *
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 _PyImport_GetModule(PyThreadState *tstate, PyObject *name)
 {
 #else
@@ -328,7 +328,7 @@ PyImport_GetModule(PyObject *name)
     return mod;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyObject *
 PyImport_GetModule(PyObject *name)
 {
@@ -3858,7 +3858,7 @@ import_find_and_load(PyThreadState *tstate, PyObject *abs_name)
 #undef accumulated
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static int
 has_lazy_submodule(PyObject *module, PyObject *name)
 {
@@ -4954,7 +4954,7 @@ _imp__maybe_set_parent_attribute_impl(PyObject *module,
                                       PyObject *child_module, PyObject *name)
 /*[clinic end generated code: output=2e72910095d0e43d input=cf011300051834d8]*/
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *attr = NULL;
     PyObject *parent_dict = NULL;
     PyObject *ret = NULL;
@@ -5027,7 +5027,7 @@ _imp__set_lazy_attributes_impl(PyObject *module, PyObject *child_module,
                                PyObject *name)
 /*[clinic end generated code: output=bd34f2e16f215c29 input=d959fbfa236f4d59]*/
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyThreadState *tstate = _PyThreadState_GET();
     PyObject *child_dict = NULL;
     PyObject *lazy_module_attr = NULL;
@@ -5098,7 +5098,7 @@ _imp__set_lazy_attributes_impl(PyObject *module, PyObject *child_module,
 #endif
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 /*[clinic input]
 _imp.hydrate_lazy_objects
 
@@ -6332,7 +6332,7 @@ static PyMethodDef imp_methods[] = {
     _IMP_EXEC_BUILTIN_METHODDEF
     _IMP__FIX_CO_FILENAME_METHODDEF
     _IMP_SOURCE_HASH_METHODDEF
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     _IMP_IS_LAZY_IMPORT_METHODDEF
     _IMP__SET_LAZY_IMPORTS_METHODDEF
     _IMP__SET_LAZY_IMPORTS_IN_MODULE_METHODDEF

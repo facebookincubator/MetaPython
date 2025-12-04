@@ -15,13 +15,13 @@
 #include "pycore_code.h"
 #include "pycore_emscripten_signal.h"  // _Py_CHECK_EMSCRIPTEN_SIGNALS
 #include "pycore_function.h"
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_import.h"        // _PyImport_ImportName()
 #endif
 #include "pycore_instruments.h"
 #include "pycore_interpolation.h" // _PyInterpolation_Build()
 #include "pycore_intrinsics.h"
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_lazyimport.h"    // PyLazyImport_CheckExact()
 #endif
 #include "pycore_long.h"          // _PyLong_ExactDealloc(), _PyLong_GetZero()
@@ -1808,7 +1808,7 @@ dummy_func(
             assert(index < DK_SIZE(keys));
             PyObject *res_o = FT_ATOMIC_LOAD_PTR_RELAXED(entries[index].me_value);
             DEOPT_IF(res_o == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             DEOPT_IF(PyLazyImport_CheckExact(res_o));
 #endif
             #if Py_GIL_DISABLED
@@ -1830,7 +1830,7 @@ dummy_func(
             PyDictUnicodeEntry *entries = DK_UNICODE_ENTRIES(keys);
             PyObject *res_o = FT_ATOMIC_LOAD_PTR_RELAXED(entries[index].me_value);
             DEOPT_IF(res_o == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             DEOPT_IF(PyLazyImport_CheckExact(res_o));
 #endif
             #if Py_GIL_DISABLED
@@ -2404,7 +2404,7 @@ dummy_func(
             PyDictUnicodeEntry *ep = DK_UNICODE_ENTRIES(keys) + index;
             PyObject *attr_o = FT_ATOMIC_LOAD_PTR_RELAXED(ep->me_value);
             DEOPT_IF(attr_o == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             DEOPT_IF(PyLazyImport_CheckExact(attr_o));
 #endif
             #ifdef Py_GIL_DISABLED
@@ -2452,7 +2452,7 @@ dummy_func(
             if (attr_o == NULL) {
                 DEOPT_IF(true);
             }
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             DEOPT_IF(PyLazyImport_CheckExact(attr_o));
 #endif
             STAT_INC(LOAD_ATTR, hit);
@@ -2896,7 +2896,7 @@ dummy_func(
 
         inst(EAGER_IMPORT_NAME, (level, fromlist -- res)) {
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyObject *res_o = _PyImport_ImportName(
                     tstate, BUILTINS(), GLOBALS(), LOCALS(), name,
                     PyStackRef_AsPyObjectBorrow(fromlist), PyStackRef_AsPyObjectBorrow(level));
@@ -2912,7 +2912,7 @@ dummy_func(
 
         inst(IMPORT_NAME, (level, fromlist -- res)) {
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
             PyObject *res_o;
             bool active = _PyImport_IsLazyImportsActive(tstate);
             if (active) {
@@ -2936,7 +2936,7 @@ dummy_func(
 
         inst(IMPORT_FROM, (from -- from, res)) {
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyObject *from_o = PyStackRef_AsPyObjectBorrow(from);
             PyObject *res_o;
             if (PyLazyImport_CheckExact(from_o)) {

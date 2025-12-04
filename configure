@@ -8251,7 +8251,7 @@ ABI_THREAD=""
 
 #Enable Lazy Imports
 
-printf "%s\n" "#define ENABLE_LAZY_IMPORTS 1" >>confdefs.h
+printf "%s\n" "#define META_PYTHON 1" >>confdefs.h
 
 
 # Check for --disable-gil

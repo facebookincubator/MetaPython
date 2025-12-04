@@ -2,7 +2,7 @@
 #  error "this header file must not be included directly"
 #endif
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyAPI_FUNC(PyObject *) _PyImport_GetModule(PyThreadState *tstate, PyObject *name);
 PyAPI_FUNC(PyObject *) PyImport_SetLazyImports(
     PyObject *enabled, PyObject *excluding, PyObject *eager);

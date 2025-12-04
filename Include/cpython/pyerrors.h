@@ -131,6 +131,6 @@ PyAPI_DATA(PyObject *) PyExc_PythonFinalizationError;
 
 #define Py_FatalError(message) _Py_FatalErrorFunc(__func__, (message))
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyAPI_DATA(PyObject *) PyExc_ImportCycleError;
 #endif

@@ -1312,7 +1312,7 @@ _PyCompile_ScopeType(compiler *c)
     return c->u->u_scope_type;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 int
 _PyCompile_NFBlocks(compiler *c)
 {

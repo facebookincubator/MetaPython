@@ -3147,7 +3147,7 @@ set_mro_error(PyObject **to_merge, Py_ssize_t to_merge_size, Py_ssize_t *remain)
 {
     Py_ssize_t i, n, off;
     char buf[1000];
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *k;
 #else
     PyObject *k, *v;
@@ -3170,7 +3170,7 @@ set_mro_error(PyObject **to_merge, Py_ssize_t to_merge_size, Py_ssize_t *remain)
     off = PyOS_snprintf(buf, sizeof(buf), "Cannot create a \
 consistent method resolution order (MRO) for bases");
     i = 0;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     while (PyDict_Next(set, &i, &k, NULL) && (size_t)off < sizeof(buf)) {
 #else
     while (PyDict_Next(set, &i, &k, &v) && (size_t)off < sizeof(buf)) {

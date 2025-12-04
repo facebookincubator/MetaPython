@@ -242,7 +242,7 @@ typedef struct PyConfig {
     wchar_t *run_presite;
 #endif
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     int lazy_imports;
 #endif
 } PyConfig;

@@ -124,7 +124,7 @@ As a consequence of this, split keys have a maximum size of 16.
 #include "pycore_dict.h"          // export _PyDict_SizeOf()
 #include "pycore_freelist.h"      // _PyFreeListState_GET()
 #include "pycore_gc.h"            // _PyObject_GC_IS_TRACKED()
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_import.h"        // _PyImport_LoadLazyImport()
 #include "pycore_lazyimport.h"    // _PyLazyImport_New(), _PyLazyImport_GetName()
 #endif
@@ -384,7 +384,7 @@ equally good collision statistics, needed less code & used less memory.
 
 */
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static int dictresize(PyInterpreterState *interp, PyDictObject *mp,
                       uint8_t log_newsize, int unicode, int lazy_imports);
 #else
@@ -392,7 +392,7 @@ static int dictresize(PyInterpreterState *interp, PyDictObject *mp,
                       uint8_t log_newsize, int unicode);
 #endif
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static Py_ssize_t resolve_lazy_imports(PyDictObject *mp);
 #endif
 
@@ -717,7 +717,7 @@ _PyDict_CheckConsistency(PyObject *op, int check_content)
                     /* test_dict fails if PyObject_Hash() is called again */
                     CHECK(entry->me_hash != -1);
                     CHECK(entry->me_value != NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                     CHECK(DK_LAZY_IMPORTS(keys) || !PyLazyImport_CheckExact(entry->me_value));
 #endif
 
@@ -740,7 +740,7 @@ _PyDict_CheckConsistency(PyObject *op, int check_content)
                     CHECK(hash != -1);
                     if (!splitted) {
                         CHECK(entry->me_value != NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                         CHECK(DK_LAZY_IMPORTS(keys) || !PyLazyImport_CheckExact(entry->me_value));
 #endif
                     }
@@ -761,7 +761,7 @@ _PyDict_CheckConsistency(PyObject *op, int check_content)
                 CHECK((duplicate_check & (1<<index)) == 0);
                 duplicate_check |= (1<<index);
                 CHECK(mp->ma_values->values[index] != NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                 CHECK(DK_LAZY_IMPORTS(keys) || !PyLazyImport_CheckExact(mp->ma_values->values[index]));
 #endif
             }
@@ -775,7 +775,7 @@ _PyDict_CheckConsistency(PyObject *op, int check_content)
 
 
 static PyDictKeysObject*
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode, bool lazy_imports)
 #else
 new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode)
@@ -823,7 +823,7 @@ new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode)
     dk->dk_log2_size = log2_size;
     dk->dk_log2_index_bytes = log2_bytes;
     dk->dk_kind = unicode ? DICT_KEYS_UNICODE : DICT_KEYS_GENERAL;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (lazy_imports) {
         dk->dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
     }
@@ -1354,7 +1354,7 @@ _Py_dict_lookup(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **valu
     PyDictKeysObject *dk;
     DictKeysKind kind;
     Py_ssize_t ix;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *startkey;
     PyObject **value_ptr;
     PyObject *value;
@@ -1392,12 +1392,12 @@ start:
         }
 
         if (ix >= 0) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
             startkey = ep->me_key;
 #endif
             if (kind == DICT_KEYS_SPLIT) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                 assert(mp->ma_values != NULL);
                 value_ptr = &mp->ma_values->values[ix];
 #else
@@ -1405,7 +1405,7 @@ start:
 #endif
             }
             else {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                 value_ptr = &ep->me_value;
 #else
                 *value_addr = DK_UNICODE_ENTRIES(dk)[ix].me_value;
@@ -1414,7 +1414,7 @@ start:
         }
         else {
             *value_addr = NULL;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             return ix;
 #endif
         }
@@ -1425,7 +1425,7 @@ start:
             goto start;
         }
         if (ix >= 0) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyDictKeyEntry *ep = &DK_ENTRIES(dk)[ix];
             startkey = ep->me_key;
             value_ptr = &ep->me_value;
@@ -1435,13 +1435,13 @@ start:
         }
         else {
             *value_addr = NULL;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             return ix;
 #endif
         }
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     value = *value_ptr;
 
     if (value && PyLazyImport_CheckExact(value)) {
@@ -1659,7 +1659,7 @@ dictkeys_generic_lookup_threadsafe(PyDictObject *mp, PyDictKeysObject* dk, PyObj
     return do_lookup(mp, dk, key, hash, compare_generic_threadsafe);
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 Py_ssize_t
 _Py_dict_lookup_threadsafe_keep_lazy(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr)
 {
@@ -1766,12 +1766,12 @@ _Py_dict_lookup_threadsafe(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyOb
     DictKeysKind kind;
     Py_ssize_t ix;
     PyObject *value;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *startkey;
     PyObject **value_ptr;
 #endif
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 start:
 #endif
     ensure_shared_on_read(mp);
@@ -1791,7 +1791,7 @@ start:
         }
 
         if (ix >= 0) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
             startkey = ep->me_key;
 #endif
@@ -1805,7 +1805,7 @@ start:
                     goto read_failed;
 
                 value = _Py_TryXGetRef(&values->values[ix]);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                 value_ptr = &values->values[ix];
 #endif
                 if (value == NULL)
@@ -1818,7 +1818,7 @@ start:
             }
             else {
                 value = _Py_TryXGetRef(&DK_UNICODE_ENTRIES(dk)[ix].me_value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
                 value_ptr = &DK_UNICODE_ENTRIES(dk)[ix].me_value;
 #endif
                 if (value == NULL) {
@@ -1833,7 +1833,7 @@ start:
         }
         else {
             value = NULL;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             *value_addr = value;
             return ix;
 #endif
@@ -1846,7 +1846,7 @@ start:
         }
         if (ix >= 0) {
             value = _Py_TryXGetRef(&DK_ENTRIES(dk)[ix].me_value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyDictKeyEntry *ep = &DK_ENTRIES(dk)[ix];
             startkey = ep->me_key;
             value_ptr = &DK_ENTRIES(dk)[ix].me_value;
@@ -1861,14 +1861,14 @@ start:
         }
         else {
             value = NULL;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             *value_addr = value;
             return ix;
 #endif
         }
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (value && PyLazyImport_CheckExact(value)) {
         assert(DK_LAZY_IMPORTS(dk));
         PyObject *resolved_value = _PyImport_LoadLazyImport(value, 0);
@@ -1940,7 +1940,7 @@ read_failed:
 Py_ssize_t
 _Py_dict_lookup_threadsafe_stackref(PyDictObject *mp, PyObject *key, Py_hash_t hash, _PyStackRef *value_addr)
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 start:;
 #endif
     PyDictKeysObject *dk = _Py_atomic_load_ptr(&mp->ma_keys);
@@ -1958,7 +1958,7 @@ start:;
                 return DKIX_EMPTY;
             }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
             PyObject *startkey = ep->me_key;
             DictKeysKind kind = DK_KIND(dk);
@@ -2051,7 +2051,7 @@ int
 _PyDict_HasOnlyStringKeys(PyObject *dict)
 {
     Py_ssize_t pos = 0;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *key;
 #else
     PyObject *key, *value;
@@ -2060,7 +2060,7 @@ _PyDict_HasOnlyStringKeys(PyObject *dict)
     /* Shortcut */
     if (DK_KIND(((PyDictObject *)dict)->ma_keys) != DICT_KEYS_GENERAL)
         return 1;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     while (_PyDict_Next(dict, &pos, &key, NULL, NULL))
 #else
     while (PyDict_Next(dict, &pos, &key, &value))
@@ -2122,14 +2122,14 @@ find_empty_slot(PyDictKeysObject *keys, Py_hash_t hash)
 static int
 insertion_resize(PyInterpreterState *interp, PyDictObject *mp, int unicode)
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     return dictresize(interp, mp, calculate_log2_keysize(GROWTH_RATE(mp)), unicode, 0);
 #else
     return dictresize(interp, mp, calculate_log2_keysize(GROWTH_RATE(mp)), unicode);
 #endif
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static void
 lazy_import_verbose_lock_held(PyThreadState *tstate, PyObject *value)
 {
@@ -2211,7 +2211,7 @@ insert_combined_dict(PyInterpreterState *interp, PyDictObject *mp,
         PyDictUnicodeEntry *ep;
         ep = &DK_UNICODE_ENTRIES(mp->ma_keys)[mp->ma_keys->dk_nentries];
         STORE_KEY(ep, key);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (PyLazyImport_CheckExact(value)) {
         uint8_t dk_kind = DK_KIND(mp->ma_keys);
         dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2225,7 +2225,7 @@ insert_combined_dict(PyInterpreterState *interp, PyDictObject *mp,
         PyDictKeyEntry *ep;
         ep = &DK_ENTRIES(mp->ma_keys)[mp->ma_keys->dk_nentries];
         STORE_KEY(ep, key);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (PyLazyImport_CheckExact(value)) {
         uint8_t dk_kind = DK_KIND(mp->ma_keys);
         dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2281,7 +2281,7 @@ insert_split_value(PyInterpreterState *interp, PyDictObject *mp, PyObject *key, 
     PyObject *old_value = mp->ma_values->values[ix];
     if (old_value == NULL) {
         _PyDict_NotifyEvent(interp, PyDict_EVENT_ADDED, mp, key, value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         if (PyLazyImport_CheckExact(value)) {
             uint8_t dk_kind = DK_KIND(mp->ma_keys);
             dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2295,7 +2295,7 @@ insert_split_value(PyInterpreterState *interp, PyDictObject *mp, PyObject *key, 
     }
     else {
         _PyDict_NotifyEvent(interp, PyDict_EVENT_MODIFIED, mp, key, value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         if (PyLazyImport_CheckExact(value)) {
             uint8_t dk_kind = DK_KIND(mp->ma_keys);
             dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2337,7 +2337,7 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
         // No space in shared keys. Go to insert_combined_dict() below.
     }
     else {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         ix = _Py_dict_lookup_keep_lazy(mp, key, hash, &old_value);
 #else
         ix = _Py_dict_lookup(mp, key, hash, &old_value);
@@ -2365,7 +2365,7 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
         assert(!_PyDict_HasSplitTable(mp));
         if (DK_IS_UNICODE(mp->ma_keys)) {
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(mp->ma_keys)[ix];
-    #ifdef ENABLE_LAZY_IMPORTS
+    #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(value)) {
                 uint8_t dk_kind = DK_KIND(mp->ma_keys);
                 dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2377,7 +2377,7 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
         }
         else {
             PyDictKeyEntry *ep = &DK_ENTRIES(mp->ma_keys)[ix];
-    #ifdef ENABLE_LAZY_IMPORTS
+    #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(value)) {
                 uint8_t dk_kind = DK_KIND(mp->ma_keys);
                 dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
@@ -2409,7 +2409,7 @@ insert_to_emptydict(PyInterpreterState *interp, PyDictObject *mp,
     ASSERT_DICT_LOCKED(mp);
 
     int unicode = PyUnicode_CheckExact(key);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     int lazy_imports = PyLazyImport_CheckExact(value);
     PyDictKeysObject *newkeys = new_keys_object(
             interp, PyDict_LOG_MINSIZE, unicode, lazy_imports);
@@ -2441,7 +2441,7 @@ insert_to_emptydict(PyInterpreterState *interp, PyDictObject *mp,
         STORE_VALUE(ep, value);
     }
     STORE_USED(mp, mp->ma_used + 1);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (lazy_imports) {
         lazy_import_verbose(value);
     }
@@ -2454,7 +2454,7 @@ insert_to_emptydict(PyInterpreterState *interp, PyDictObject *mp,
     // set_keys here because the transition from empty to non-empty is safe
     // as the empty keys will never be freed.
     FT_ATOMIC_STORE_PTR_RELEASE(mp->ma_keys, newkeys);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     ASSERT_CONSISTENT(mp);
 #endif
     return 0;
@@ -2519,7 +2519,7 @@ This function supports:
  - Generic -> Generic
 */
 static int
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 dictresize(PyInterpreterState *interp, PyDictObject *mp,
            uint8_t log2_newsize, int unicode, int lazy_imports)
 #else
@@ -2545,7 +2545,7 @@ dictresize(PyInterpreterState *interp, PyDictObject *mp,
         unicode = 0;
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (DK_LAZY_IMPORTS(oldkeys)) {
         lazy_imports = 1;
     }
@@ -2558,7 +2558,7 @@ dictresize(PyInterpreterState *interp, PyDictObject *mp,
      */
 
     /* Allocate a new table. */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     newkeys = new_keys_object(interp, log2_newsize, unicode, lazy_imports);
 #else
     newkeys = new_keys_object(interp, log2_newsize, unicode);
@@ -2686,7 +2686,7 @@ dictresize(PyInterpreterState *interp, PyDictObject *mp,
 }
 
 static PyObject *
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 dict_new_presized(PyInterpreterState *interp, Py_ssize_t minused, bool unicode, bool lazy_imports)
 #else
 dict_new_presized(PyInterpreterState *interp, Py_ssize_t minused, bool unicode)
@@ -2711,7 +2711,7 @@ dict_new_presized(PyInterpreterState *interp, Py_ssize_t minused, bool unicode)
         log2_newsize = estimate_log2_keysize(minused);
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     new_keys = new_keys_object(interp, log2_newsize, unicode, lazy_imports);
 #else
     new_keys = new_keys_object(interp, log2_newsize, unicode);
@@ -2725,7 +2725,7 @@ PyObject *
 _PyDict_NewPresized(Py_ssize_t minused)
 {
     PyInterpreterState *interp = _PyInterpreterState_GET();
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     return dict_new_presized(interp, minused, false, false);
 #else
     return dict_new_presized(interp, minused, false);
@@ -2749,7 +2749,7 @@ _PyDict_FromItems(PyObject *const *keys, Py_ssize_t keys_offset,
         ks += keys_offset;
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *dict = dict_new_presized(interp, length, unicode, false);
 #else
     PyObject *dict = dict_new_presized(interp, length, unicode);
@@ -2907,7 +2907,7 @@ _PyDict_GetItemRef_KnownHash_LockHeld(PyDictObject *op, PyObject *key,
     PyObject *value;
     Py_ssize_t ix = _Py_dict_lookup(op, key, hash, &value);
     assert(ix >= 0 || value == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -2937,7 +2937,7 @@ _PyDict_GetItemRef_KnownHash(PyDictObject *op, PyObject *key, Py_hash_t hash, Py
     Py_ssize_t ix = _Py_dict_lookup(op, key, hash, &value);
 #endif
     assert(ix >= 0 || value == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -2992,7 +2992,7 @@ _PyDict_GetItemRef_Unicode_LockHeld(PyDictObject *op, PyObject *key, PyObject **
     PyObject *value;
     Py_ssize_t ix = _Py_dict_lookup(op, key, hash, &value);
     assert(ix >= 0 || value == NULL);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -3040,7 +3040,7 @@ PyDict_GetItemWithError(PyObject *op, PyObject *key)
     return value;  // borrowed reference
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 /* Similar to PyDict_GetItemRef, but it doesn't resolve
  * any lazy import objects. */
 int
@@ -3147,7 +3147,7 @@ _PyDict_LoadGlobal(PyDictObject *globals, PyDictObject *builtins, PyObject *key)
 
     /* namespace 1: globals */
     ix = _Py_dict_lookup_threadsafe(globals, key, hash, &value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR)
 #else
     if (ix == DKIX_ERROR)
@@ -3176,7 +3176,7 @@ _PyDict_LoadGlobalStackRef(PyDictObject *globals, PyDictObject *builtins, PyObje
 
     /* namespace 1: globals */
     ix = _Py_dict_lookup_threadsafe_stackref(globals, key, hash, res);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -3210,7 +3210,7 @@ _PyDict_LoadBuiltinsFromGlobals(PyObject *globals)
     // because the `ref` is not visible to the GC.
     _PyStackRef ref;
     Py_ssize_t ix = _Py_dict_lookup_threadsafe_stackref(mp, key, hash, &ref);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -3417,7 +3417,7 @@ _PyDict_DelItem_KnownHash_LockHeld(PyObject *op, PyObject *key, Py_hash_t hash)
     assert(key);
     assert(hash != -1);
     mp = (PyDictObject *)op;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     ix = _Py_dict_lookup_keep_lazy(mp, key, hash, &old_value);
 #else
     ix = _Py_dict_lookup(mp, key, hash, &old_value);
@@ -3463,7 +3463,7 @@ delitemif_lock_held(PyObject *op, PyObject *key,
     if (hash == -1)
         return -1;
     mp = (PyDictObject *)op;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     ix = _Py_dict_lookup_keep_lazy(mp, key, hash, &old_value);
 #else
     ix = _Py_dict_lookup(mp, key, hash, &old_value);
@@ -3580,7 +3580,7 @@ _PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey,
     PyObject *key, *value;
     Py_hash_t hash;
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     assert(PyDict_Check(op));
 #else
     if (!PyDict_Check(op))
@@ -3656,7 +3656,7 @@ _PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey,
  * the values associated with the keys (but doesn't insert new keys or
  * delete keys), via PyDict_SetItem().
  */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 int
 PyDict_NextWithError(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue)
 {
@@ -3699,7 +3699,7 @@ PyDict_NextWithError(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject *
 int
 PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue)
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (!PyDict_Check(op)) {
         PyErr_Format(PyExc_TypeError,
                      "A dict argument is required, not '%s'",
@@ -3731,7 +3731,7 @@ PyDict_Next(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue)
 }
 
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 int
 _PyDict_NextKeepLazy(PyObject *op, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue)
 {
@@ -3764,7 +3764,7 @@ _PyDict_Pop_KnownHash(PyDictObject *mp, PyObject *key, Py_hash_t hash,
 
     PyObject *old_value;
     Py_ssize_t ix = _Py_dict_lookup(mp, key, hash, &old_value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
     if (ix == DKIX_ERROR) {
@@ -3886,7 +3886,7 @@ dict_dict_fromkeys(PyInterpreterState *interp, PyDictObject *mp,
     Py_ssize_t pos = 0;
     PyObject *key;
     Py_hash_t hash;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyDictKeysObject *dk = ((PyDictObject*)iterable)->ma_keys;
     int unicode = DK_IS_UNICODE(dk);
     int lazy_imports = DK_LAZY_IMPORTS(dk) ? 1 : 0;
@@ -3896,7 +3896,7 @@ dict_dict_fromkeys(PyInterpreterState *interp, PyDictObject *mp,
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(PyDict_GET_SIZE(iterable)),
         DK_LOG_SIZE(mp->ma_keys));
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (dictresize(interp, mp, new_size, unicode, lazy_imports)) {
 #else
     if (dictresize(interp, mp, new_size, unicode)) {
@@ -3925,7 +3925,7 @@ dict_set_fromkeys(PyInterpreterState *interp, PyDictObject *mp,
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(PySet_GET_SIZE(iterable)),
         DK_LOG_SIZE(mp->ma_keys));
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     int lazy_imports = PyLazyImport_CheckExact(value);
     if (dictresize(interp, mp, new_size, 0, lazy_imports)) {
 #else
@@ -4074,7 +4074,7 @@ dict_repr_lock_held(PyObject *self)
         return PyUnicode_FromString("{}");
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (DK_LAZY_IMPORTS(mp->ma_keys)) {
         if (resolve_lazy_imports(mp) != 0) {
             return NULL;
@@ -4181,7 +4181,7 @@ dict_subscript(PyObject *self, PyObject *key)
         return NULL;
     }
     ix = _Py_dict_lookup_threadsafe(mp, key, hash, &value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR)
 #else
     if (ix == DKIX_ERROR)
@@ -4284,7 +4284,7 @@ values_lock_held(PyObject *dict)
     PyObject *v;
     Py_ssize_t n;
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (DK_LAZY_IMPORTS(mp->ma_keys)) {
         if (resolve_lazy_imports(mp) != 0) {
             return NULL;
@@ -4328,7 +4328,7 @@ PyDict_Values(PyObject *dict)
 }
 
 static PyObject *
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 items_lock_held_keep_lazy(PyDictObject *dict)
 #else
 items_lock_held(PyObject *dict)
@@ -4384,7 +4384,7 @@ items_lock_held(PyObject *dict)
     return v;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static PyObject *
 items_lock_held(PyObject *dict)
 {
@@ -4417,7 +4417,7 @@ PyDict_Items(PyObject *dict)
     return res;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static Py_ssize_t
 resolve_lazy_imports(PyDictObject *mp)
 {
@@ -4716,7 +4716,7 @@ dict_dict_merge(PyInterpreterState *interp, PyDictObject *mp, PyDictObject *othe
         */
     if (USABLE_FRACTION(DK_SIZE(mp->ma_keys)) < other->ma_used) {
         int unicode = DK_IS_UNICODE(other->ma_keys);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         int lazy_imports = DK_LAZY_IMPORTS(other->ma_keys) ? 1 : 0;
         if (dictresize(interp, mp,
                         estimate_log2_keysize(mp->ma_used + other->ma_used),
@@ -4963,7 +4963,7 @@ copy_lock_held(PyObject *o)
         split_copy->ma_used = mp->ma_used;
         split_copy->_ma_watcher_tag = 0;
         dictkeys_incref(mp->ma_keys);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         ASSERT_CONSISTENT(split_copy);
 #endif
         _PyObject_GC_TRACK(split_copy);
@@ -5086,7 +5086,7 @@ dict_equal_lock_held(PyDictObject *a, PyDictObject *b)
             /* ditto for key */
             Py_INCREF(key);
             /* reuse the known hash value */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
             _Py_dict_lookup_keep_lazy(b, key, hash, &bval);
 #else
             _Py_dict_lookup(b, key, hash, &bval);
@@ -5190,7 +5190,7 @@ dict_get_impl(PyDictObject *self, PyObject *key, PyObject *default_value)
         return NULL;
     }
     ix = _Py_dict_lookup_threadsafe(self, key, hash, &val);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR)
 #else
     if (ix == DKIX_ERROR)
@@ -5263,7 +5263,7 @@ dict_setdefault_ref_lock_held(PyObject *d, PyObject *key, PyObject *default_valu
     }
     else {
         ix = _Py_dict_lookup(mp, key, hash, &value);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         if (ix == DKIX_ERROR || ix == DKIX_VALUE_ERROR) {
 #else
         if (ix == DKIX_ERROR) {
@@ -5423,7 +5423,7 @@ dict_popitem_impl(PyDictObject *self)
     }
     /* Convert split table to combined table */
     if (_PyDict_HasSplitTable(self)) {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         if (dictresize(interp, self, DK_LOG_SIZE(self->ma_keys), 1, 0) < 0) {
 #else
         if (dictresize(interp, self, DK_LOG_SIZE(self->ma_keys), 1) < 0) {
@@ -5474,7 +5474,7 @@ dict_popitem_impl(PyDictObject *self)
     assert(dictkeys_get_index(self->ma_keys, j) == i);
     dictkeys_set_index(self->ma_keys, j, DKIX_DUMMY);
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (value && PyLazyImport_CheckExact(value)) {
         assert(DK_LAZY_IMPORTS(self->ma_keys));
         PyObject *resolved_value = _PyImport_LoadLazyImport(value, 0);
@@ -5666,7 +5666,7 @@ PyDict_Contains(PyObject *op, PyObject *key)
     return _PyDict_Contains_KnownHash(op, key, hash);
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 /* Return 1 if `name` is a lazy import object in dict `mp`, 0 if not, and -1 on error. */
 int
 PyDict_IsLazyImport(PyObject *mp, PyObject *name)
@@ -5707,7 +5707,7 @@ _PyDict_Contains_KnownHash(PyObject *op, PyObject *key, Py_hash_t hash)
     Py_ssize_t ix;
 
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #ifdef Py_GIL_DISABLED
     ix = _Py_dict_lookup_threadsafe_keep_lazy(mp, key, hash, &value);
 #else
@@ -6846,7 +6846,7 @@ _PyDictView_New(PyObject *dict, PyTypeObject *type)
                      type->tp_name, Py_TYPE(dict)->tp_name);
         return NULL;
     }
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     bool resolve_lazy_imports_failed = false;
     Py_BEGIN_CRITICAL_SECTION(dict);
     if (type == &PyDictItems_Type || type == &PyDictValues_Type) {
@@ -7178,7 +7178,7 @@ dictitems_xor_lock_held(PyObject *d1, PyObject *d2)
     ASSERT_DICT_LOCKED(d1);
     ASSERT_DICT_LOCKED(d2);
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (DK_LAZY_IMPORTS(((PyDictObject *)d1)->ma_keys)) {
         if (resolve_lazy_imports((PyDictObject *)d1) != 0) {
             return NULL;
@@ -7659,7 +7659,7 @@ _PyDict_NewKeysForClass(PyHeapTypeObject *cls)
 {
     PyInterpreterState *interp = _PyInterpreterState_GET();
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyDictKeysObject *keys = new_keys_object(
             interp, NEXT_LOG2_SHARED_KEYS_MAX_SIZE, 1, 0);
 #else

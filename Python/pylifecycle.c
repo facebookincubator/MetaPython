@@ -928,7 +928,7 @@ pycore_interp_init(PyThreadState *tstate)
         goto done;
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     interp->lazy_imports = config->lazy_imports;
 #endif
 

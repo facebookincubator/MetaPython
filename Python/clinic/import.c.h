@@ -8,7 +8,7 @@ preserve
 #endif
 #include "pycore_modsupport.h"    // _PyArg_CheckPositional()
 
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
 
 PyDoc_STRVAR(_imp_is_lazy_import__doc__,
 "is_lazy_import($module, dict, name, /)\n"
@@ -52,9 +52,9 @@ exit:
     return return_value;
 }
 
-#endif /* defined(ENABLE_LAZY_IMPORTS) */
+#endif /* defined(META_PYTHON) */
 
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
 
 PyDoc_STRVAR(_imp__set_lazy_imports__doc__,
 "_set_lazy_imports($module, enabled=True, /,\n"
@@ -138,9 +138,9 @@ exit:
     return return_value;
 }
 
-#endif /* defined(ENABLE_LAZY_IMPORTS) */
+#endif /* defined(META_PYTHON) */
 
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
 
 PyDoc_STRVAR(_imp__set_lazy_imports_in_module__doc__,
 "_set_lazy_imports_in_module($module, enabled=True, /)\n"
@@ -174,9 +174,9 @@ exit:
     return return_value;
 }
 
-#endif /* defined(ENABLE_LAZY_IMPORTS) */
+#endif /* defined(META_PYTHON) */
 
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
 
 PyDoc_STRVAR(_imp_is_lazy_imports_enabled__doc__,
 "is_lazy_imports_enabled($module, /)\n"
@@ -196,7 +196,7 @@ _imp_is_lazy_imports_enabled(PyObject *module, PyObject *Py_UNUSED(ignored))
     return _imp_is_lazy_imports_enabled_impl(module);
 }
 
-#endif /* defined(ENABLE_LAZY_IMPORTS) */
+#endif /* defined(META_PYTHON) */
 
 PyDoc_STRVAR(_imp__maybe_set_parent_attribute__doc__,
 "_maybe_set_parent_attribute($module, parent_module, child,\n"
@@ -279,7 +279,7 @@ exit:
     return return_value;
 }
 
-#if defined(ENABLE_LAZY_IMPORTS)
+#if defined(META_PYTHON)
 
 PyDoc_STRVAR(_imp_hydrate_lazy_objects__doc__,
 "hydrate_lazy_objects($module, /)\n"
@@ -299,7 +299,7 @@ _imp_hydrate_lazy_objects(PyObject *module, PyObject *Py_UNUSED(ignored))
     return _imp_hydrate_lazy_objects_impl(module);
 }
 
-#endif /* defined(ENABLE_LAZY_IMPORTS) */
+#endif /* defined(META_PYTHON) */
 
 PyDoc_STRVAR(_imp_lock_held__doc__,
 "lock_held($module, /)\n"

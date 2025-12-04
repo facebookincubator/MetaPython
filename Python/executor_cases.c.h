@@ -2417,7 +2417,7 @@
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
             }
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(res_o)) {
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
@@ -2460,7 +2460,7 @@
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
             }
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(res_o)) {
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
@@ -3347,7 +3347,7 @@
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
             }
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(attr_o)) {
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
@@ -3421,7 +3421,7 @@
                     JUMP_TO_JUMP_TARGET();
                 }
             }
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             if (PyLazyImport_CheckExact(attr_o)) {
                 UOP_STAT_INC(uopcode, miss);
                 JUMP_TO_JUMP_TARGET();
@@ -4046,7 +4046,7 @@
             fromlist = stack_pointer[-1];
             level = stack_pointer[-2];
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             _PyFrame_SetStackPointer(frame, stack_pointer);
             PyObject *res_o = _PyImport_ImportName(
                 tstate, BUILTINS(), GLOBALS(), LOCALS(), name,
@@ -4089,7 +4089,7 @@
             fromlist = stack_pointer[-1];
             level = stack_pointer[-2];
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-            #if defined(ENABLE_LAZY_IMPORTS)
+            #if defined(META_PYTHON)
             PyObject *res_o;
             _PyFrame_SetStackPointer(frame, stack_pointer);
             bool active = _PyImport_IsLazyImportsActive(tstate);
@@ -4142,7 +4142,7 @@
             oparg = CURRENT_OPARG();
             from = stack_pointer[-1];
             PyObject *name = GETITEM(FRAME_CO_NAMES, oparg);
-            #ifdef ENABLE_LAZY_IMPORTS
+            #ifdef META_PYTHON
             PyObject *from_o = PyStackRef_AsPyObjectBorrow(from);
             PyObject *res_o;
             if (PyLazyImport_CheckExact(from_o)) {

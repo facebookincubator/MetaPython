@@ -2,13 +2,13 @@
 #define _PY_INTERPRETER
 
 #include "Python.h"
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_dict.h"
 #endif
 #include "pycore_compile.h"       // _PyCompile_GetUnaryIntrinsicName
 #include "pycore_function.h"      // _Py_set_function_type_params()
 #include "pycore_genobject.h"     // _PyAsyncGenValueWrapperNew
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #include "pycore_import.h"        // _PyImport_LoadLazyImportTstate()
 #endif
 #include "pycore_interpframe.h"   // _PyFrame_GetLocals()
@@ -42,7 +42,7 @@ print_expr(PyThreadState* Py_UNUSED(ignored), PyObject *value)
     return res;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 static int
 import_all_from(PyThreadState *tstate, PyObject *locals, PyObject *v)
 {
@@ -228,7 +228,7 @@ import_all_from(PyThreadState *tstate, PyObject *locals, PyObject *v)
 static PyObject *
 import_star(PyThreadState* tstate, PyObject *from)
 {
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     int err;
 #endif
 
@@ -240,7 +240,7 @@ import_star(PyThreadState* tstate, PyObject *from)
                             "no locals found during 'import *'");
         return NULL;
     }
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (PyLazyImport_CheckExact(from)) {
         PyObject *mod = _PyImport_LoadLazyImportTstate(tstate, from, 1);
         if (mod == NULL) {

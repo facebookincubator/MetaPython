@@ -129,7 +129,7 @@ static const PyConfigSpec PYCONFIG_SPEC[] = {
     SPEC(warnoptions, WSTR_LIST, PUBLIC, SYS_ATTR("warnoptions")),
     SPEC(write_bytecode, BOOL, PUBLIC, SYS_FLAG_SETTER(4, config_sys_flag_not)),
     SPEC(xoptions, WSTR_LIST, PUBLIC, SYS_ATTR("_xoptions")),
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     SPEC(lazy_imports, BOOL, PUBLIC, SYS_FLAG(18)),
 #endif
 
@@ -484,7 +484,7 @@ int Py_NoUserSiteDirectory = 0; /* for -s and site.py */
 int Py_UnbufferedStdioFlag = 0; /* Unbuffered binary std{in,out,err} */
 int Py_HashRandomizationFlag = 0; /* for -R and PYTHONHASHSEED */
 int Py_IsolatedFlag = 0; /* for -I, isolate from user's env */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 int Py_LazyImportsFlag = 0; /* for -L, lazy imports */
 #endif
 #ifdef MS_WINDOWS
@@ -548,7 +548,7 @@ _Py_COMP_DIAG_IGNORE_DEPR_DECLS
     SET_ITEM_INT(Py_UnbufferedStdioFlag);
     SET_ITEM_INT(Py_HashRandomizationFlag);
     SET_ITEM_INT(Py_IsolatedFlag);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     SET_ITEM_INT(Py_LazyImportsFlag);
 #endif
 
@@ -947,7 +947,7 @@ config_check_consistency(const PyConfig *config)
     assert(config->_is_python_build >= 0);
     assert(config->safe_path >= 0);
     assert(config->int_max_str_digits >= 0);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     assert(config->lazy_imports >= 0);
 #endif
     // cpu_count can be -1 if the user doesn't override it.
@@ -1023,7 +1023,7 @@ _PyConfig_InitCompatConfig(PyConfig *config)
     config->_config_init = (int)_PyConfig_INIT_COMPAT;
     config->import_time = -1;
     config->isolated = -1;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     config->lazy_imports = -1;
 #endif
     config->use_environment = -1;
@@ -1089,7 +1089,7 @@ config_init_defaults(PyConfig *config)
     _PyConfig_InitCompatConfig(config);
 
     config->isolated = 0;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     config->lazy_imports = 0;
 #endif
     config->use_environment = 1;
@@ -1139,7 +1139,7 @@ PyConfig_InitIsolatedConfig(PyConfig *config)
 
     config->_config_init = (int)_PyConfig_INIT_ISOLATED;
     config->isolated = 1;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     config->lazy_imports = 0;
 #endif
     config->use_environment = 0;
@@ -1698,7 +1698,7 @@ _Py_COMP_DIAG_IGNORE_DEPR_DECLS
         }
 
     COPY_FLAG(isolated, Py_IsolatedFlag);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     COPY_FLAG(lazy_imports, Py_LazyImportsFlag);
 #endif
     COPY_NOT_FLAG(use_environment, Py_IgnoreEnvironmentFlag);
@@ -1741,7 +1741,7 @@ _Py_COMP_DIAG_IGNORE_DEPR_DECLS
         }
 
     COPY_FLAG(isolated, Py_IsolatedFlag);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     COPY_FLAG(lazy_imports, Py_LazyImportsFlag);
 #endif
     COPY_NOT_FLAG(use_environment, Py_IgnoreEnvironmentFlag);
@@ -1875,7 +1875,7 @@ config_read_env_vars(PyConfig *config)
     _Py_get_env_flag(use_env, &config->verbose, "PYTHONVERBOSE");
     _Py_get_env_flag(use_env, &config->optimization_level, "PYTHONOPTIMIZE");
     _Py_get_env_flag(use_env, &config->inspect, "PYTHONINSPECT");
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     _Py_get_env_flag(use_env, &config->lazy_imports, "PYTHONLAZYIMPORTSALL");
 #endif
 
@@ -3028,7 +3028,7 @@ config_parse_cmdline(PyConfig *config, PyWideStringList *warnoptions,
             config->verbose++;
             break;
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
         case 'L':
             config->lazy_imports = 1;
             break;
@@ -3680,7 +3680,7 @@ _Py_DumpPathConfig(PyThreadState *tstate)
     PySys_WriteStderr("  safe_path = %i\n", config->safe_path);
     PySys_WriteStderr("  import site = %i\n", config->site_import);
     PySys_WriteStderr("  is in build tree = %i\n", config->_is_python_build);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PySys_WriteStderr("  lazy imports = %i\n", config->lazy_imports);
 #endif
     DUMP_CONFIG("stdlib dir", stdlib_dir);

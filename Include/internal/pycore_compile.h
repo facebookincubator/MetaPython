@@ -151,7 +151,7 @@ int _PyCompile_ResolveNameop(struct _PyCompiler *c, PyObject *mangled, int scope
 int _PyCompile_IsInteractiveTopLevel(struct _PyCompiler *c);
 int _PyCompile_IsInInlinedComp(struct _PyCompiler *c);
 int _PyCompile_ScopeType(struct _PyCompiler *c);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 int _PyCompile_NFBlocks(struct _PyCompiler *c);
 int _PyCompile_CFFlags(struct _PyCompiler *c);
 #endif

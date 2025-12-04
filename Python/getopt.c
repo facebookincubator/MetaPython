@@ -37,7 +37,7 @@ static const wchar_t *opt_ptr = L"";
 
 /* Python command line short and long options */
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #define SHORT_OPTS L"bBc:dEhiIm:OPLqRsStuvVW:xX:?"
 #else
 #define SHORT_OPTS L"bBc:dEhiIm:OPqRsStuvVW:xX:?"

@@ -117,7 +117,7 @@ extern void _PyDictKeys_DecRef(PyDictKeysObject *keys);
  */
 extern Py_ssize_t _Py_dict_lookup(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr);
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 /* _Py_dict_lookup_keep_lazy() is the same as _Py_dict_lookup(), but keeps lazy objects unresolved */
 extern Py_ssize_t _Py_dict_lookup_keep_lazy(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr);
 extern int _PyDict_GetItemRefKeepLazy(PyObject *, PyObject *, PyObject **);
@@ -173,7 +173,7 @@ PyAPI_FUNC(void) _PyDict_EnsureSharedOnRead(PyDictObject *mp);
 #define DKIX_DUMMY (-2)  /* Used internally */
 #define DKIX_ERROR (-3)
 #define DKIX_KEY_CHANGED (-4) /* Used internally */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #define DKIX_VALUE_ERROR (-5) /* Used internally */
 #endif
 
@@ -187,7 +187,7 @@ typedef enum {
 #define DICT_KEYS_KIND_MASK 0x03
 #define DICT_KEYS_LAZY_IMPORTS_MASK 0x80
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 #define LOAD_SHARED_UCHAR(obj) _Py_atomic_load_uchar_acquire(&obj)
 #define STORE_SHARED_UCHAR(obj, value) _Py_atomic_store_uchar_release(&obj, value)
 #define DK_KIND(dk) (LOAD_SHARED_UCHAR(dk->dk_kind) & DICT_KEYS_KIND_MASK)

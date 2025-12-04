@@ -1378,7 +1378,7 @@ PyObject_GetOptionalAttr(PyObject *v, PyObject *name, PyObject **result)
     if (*result != NULL) {
         return 1;
     }
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (!PyErr_ExceptionMatches(PyExc_AttributeError) &&
         !(PyErr_ExceptionMatches(PyExc_ImportCycleError))) {
 #else

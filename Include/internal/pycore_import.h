@@ -117,7 +117,7 @@ extern const struct _module_alias * _PyImport_FrozenAliases;
 extern int _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
     const char *name);
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyAPI_FUNC(PyObject *) _PyImport_ImportName(PyThreadState *tstate,
                                             PyObject *builtins,
                                             PyObject *globals,

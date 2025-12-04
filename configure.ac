@@ -1721,9 +1721,9 @@ AC_SUBST([ABI_THREAD])
 ABIFLAGS=""
 ABI_THREAD=""
 
-#Enable Lazy Imports
-AC_DEFINE([ENABLE_LAZY_IMPORTS], [1],
-            [Define if you want to enable lazy imports])
+#Enable MetaPython
+AC_DEFINE([META_PYTHON], [1],
+            [Define if you want MetaPython specific features])
 
 # Check for --disable-gil
 # --disable-gil

@@ -2837,7 +2837,7 @@ _PyEval_GetFrameLocals(void)
     return locals;
 }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
 PyObject *
 #else
 static PyObject *

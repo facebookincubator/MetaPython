@@ -3393,7 +3393,7 @@ static PyStructSequence_Field flags_fields[] = {
     {"warn_default_encoding",   "-X warn_default_encoding"},
     {"safe_path", "-P"},
     {"int_max_str_digits",      "-X int_max_str_digits"},
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     {"lazy_imports",            "-L"},
 #endif
     {"gil",                     "-X gil"},
@@ -3408,7 +3408,7 @@ static PyStructSequence_Desc flags_desc = {
     "sys.flags",        /* name */
     flags__doc__,       /* doc */
     flags_fields,       /* fields */
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     19
 #endif
 };
@@ -3491,7 +3491,7 @@ set_flags_from_config(PyInterpreterState *interp, PyObject *flags)
     SetFlag(config->warn_default_encoding);
     SetFlagObj(PyBool_FromLong(config->safe_path));
     SetFlag(config->int_max_str_digits);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     SetFlagObj(PyBool_FromLong(config->lazy_imports));
 #endif
 #ifdef Py_GIL_DISABLED
@@ -4136,7 +4136,7 @@ _PySys_Create(PyThreadState *tstate, PyObject **sysmod_p)
         goto error;
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     PyObject *lazy_modules = PyDict_New();
     if (lazy_modules == NULL) {
         goto error;
@@ -4173,7 +4173,7 @@ _PySys_Create(PyThreadState *tstate, PyObject **sysmod_p)
         goto error;
     }
 
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     if (PyDict_SetItemString(sysdict, "lazy_modules", lazy_modules) < 0) {
         goto error;
     }

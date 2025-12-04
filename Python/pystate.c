@@ -684,7 +684,7 @@ init_interpreter(PyInterpreterState *interp,
     interp->executor_deletion_list_head = NULL;
     interp->executor_deletion_list_remaining_capacity = 0;
     interp->trace_run_counter = JIT_CLEANUP_THRESHOLD;
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     interp->lazy_imports = -1;
     interp->lazy_import_verbose_seen = NULL;
     interp->excluding_modules = NULL;
@@ -910,7 +910,7 @@ interpreter_clear(PyInterpreterState *interp, PyThreadState *tstate)
 
     Py_CLEAR(interp->sysdict_copy);
     Py_CLEAR(interp->builtins_copy);
-#ifdef ENABLE_LAZY_IMPORTS
+#ifdef META_PYTHON
     Py_CLEAR(interp->lazy_import_verbose_seen);
     Py_CLEAR(interp->excluding_modules);
     Py_CLEAR(interp->eager_imports);
