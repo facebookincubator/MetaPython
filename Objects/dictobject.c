@@ -2362,29 +2362,41 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
     if (old_value != value) {
         _PyDict_NotifyEvent(interp, PyDict_EVENT_MODIFIED, mp, key, value);
         assert(old_value != NULL);
-        assert(!_PyDict_HasSplitTable(mp));
         if (DK_IS_UNICODE(mp->ma_keys)) {
-            PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(mp->ma_keys)[ix];
-    #ifdef META_PYTHON
-            if (PyLazyImport_CheckExact(value)) {
-                uint8_t dk_kind = DK_KIND(mp->ma_keys);
-                dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
-                STORE_SHARED_UCHAR(mp->ma_keys->dk_kind, dk_kind);
-                lazy_import_verbose(value);
+            if (_PyDict_HasSplitTable(mp)) {
+#ifdef META_PYTHON
+                if (PyLazyImport_CheckExact(value)) {
+                    uint8_t dk_kind = DK_KIND(mp->ma_keys);
+                    dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
+                    STORE_SHARED_UCHAR(mp->ma_keys->dk_kind, dk_kind);
+                    lazy_import_verbose(value);
+                }
+#endif
+                STORE_SPLIT_VALUE(mp, ix, value);
             }
-    #endif
-            STORE_VALUE(ep, value);
+            else {
+                PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(mp->ma_keys)[ix];
+#ifdef META_PYTHON
+                if (PyLazyImport_CheckExact(value)) {
+                    uint8_t dk_kind = DK_KIND(mp->ma_keys);
+                    dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
+                    STORE_SHARED_UCHAR(mp->ma_keys->dk_kind, dk_kind);
+                    lazy_import_verbose(value);
+                }
+#endif
+                STORE_VALUE(ep, value);
+            }
         }
         else {
             PyDictKeyEntry *ep = &DK_ENTRIES(mp->ma_keys)[ix];
-    #ifdef META_PYTHON
+#ifdef META_PYTHON
             if (PyLazyImport_CheckExact(value)) {
                 uint8_t dk_kind = DK_KIND(mp->ma_keys);
                 dk_kind |= DICT_KEYS_LAZY_IMPORTS_MASK;
                 STORE_SHARED_UCHAR(mp->ma_keys->dk_kind, dk_kind);
                 lazy_import_verbose(value);
             }
-    #endif
+#endif
             STORE_VALUE(ep, value);
         }
     }
