@@ -108,7 +108,12 @@ class ResourceTracker(object):
         close(self._fd)
         self._fd = None
 
-        waitpid(self._pid, 0)
+        try:
+            waitpid(self._pid, 0)
+        except ChildProcessError:
+            self._pid = None
+            self._exitcode = None
+            return
         self._pid = None
 
     def getfd(self):
