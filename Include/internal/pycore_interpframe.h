@@ -17,9 +17,35 @@ extern "C" {
 #define _PyInterpreterFrame_LASTI(IF) \
     ((int)((IF)->instr_ptr - _PyFrame_GetBytecode((IF))))
 
+#ifdef META_PYTHON
+
+__attribute__((weak)) PyAPI_DATA(PyTypeObject) PyUnstable_JITExecutable_Type;
+
+#define PyUnstable_JITExecutable_Check(op) Py_IS_TYPE((op), &PyUnstable_JITExecutable_Type)
+
+PyAPI_FUNC(PyObject *) PyUnstable_MakeJITExecutable(_PyFrame_Reifier reifier, PyCodeObject *code, PyObject *state);
+
+PyAPI_FUNC(int) _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame);
+
+static inline int
+_PyFrame_EnsureFrameFullyInitialized(_PyInterpreterFrame *frame)
+{
+    if (PyUnstable_JITExecutable_Check(PyStackRef_AsPyObjectBorrow(frame->f_executable))) {
+        return _PyFrame_InitializeExternalFrame(frame);
+    }
+    return 0;
+}
+
+#endif
+
 static inline PyCodeObject *_PyFrame_GetCode(_PyInterpreterFrame *f) {
     assert(!PyStackRef_IsNull(f->f_executable));
     PyObject *executable = PyStackRef_AsPyObjectBorrow(f->f_executable);
+#ifdef META_PYTHON
+    if (PyUnstable_JITExecutable_Check(executable)) {
+        return ((PyUnstable_PyJitExecutable *)executable)->je_code;
+    }
+#endif
     assert(PyCode_Check(executable));
     return (PyCodeObject *)executable;
 }
@@ -48,6 +74,14 @@ _PyFrame_SafeGetCode(_PyInterpreterFrame *f)
     if (_PyObject_IsFreed(executable)) {
         return NULL;
     }
+#ifdef META_PYTHON
+    if (PyUnstable_JITExecutable_Check(executable)) {
+        executable = (PyObject *)((PyUnstable_PyJitExecutable *)executable)->je_code;
+        if (_PyObject_IsFreed(executable)) {
+            return NULL;
+        }
+    }
+#endif
     if (!PyCode_Check(executable)) {
         return NULL;
     }
@@ -58,6 +92,12 @@ static inline _Py_CODEUNIT *
 _PyFrame_GetBytecode(_PyInterpreterFrame *f)
 {
 #ifdef Py_GIL_DISABLED
+#ifdef META_PYTHON
+    if (_PyFrame_EnsureFrameFullyInitialized(f) < 0) {
+        return NULL;
+    }
+#endif
+
     PyCodeObject *co = _PyFrame_GetCode(f);
     _PyCodeArray *tlbc = _PyCode_GetTLBCArray(co);
     assert(f->tlbc_index >= 0 && f->tlbc_index < tlbc->size);
@@ -79,6 +119,12 @@ _PyFrame_SafeGetLasti(struct _PyInterpreterFrame *f)
     if (co == NULL) {
         return -1;
     }
+
+#ifdef META_PYTHON
+    if (_PyFrame_EnsureFrameFullyInitialized(f) < 0) {
+        return -1;
+    }
+#endif
 
     _Py_CODEUNIT *bytecode;
 #ifdef Py_GIL_DISABLED
@@ -277,6 +323,26 @@ _PyThreadState_GetFrame(PyThreadState *tstate)
     return _PyFrame_GetFirstComplete(tstate->current_frame);
 }
 
+static inline PyObject *
+_PyFrame_GetGlobals(_PyInterpreterFrame *frame) {
+#ifdef META_PYTHON
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+#endif
+    return frame->f_globals;
+}
+
+static inline PyObject *
+_PyFrame_GetBuiltins(_PyInterpreterFrame *frame) {
+#ifdef META_PYTHON
+    if (_PyFrame_EnsureFrameFullyInitialized(frame) < 0) {
+        return NULL;
+    }
+#endif
+    return frame->f_builtins;
+}
+
 /* For use by _PyFrame_GetFrameObject
   Do not call directly. */
 PyFrameObject *
@@ -288,6 +354,11 @@ _PyFrame_MakeAndSetFrameObject(_PyInterpreterFrame *frame);
 static inline PyFrameObject *
 _PyFrame_GetFrameObject(_PyInterpreterFrame *frame)
 {
+#ifdef META_PYTHON
+    if (PyUnstable_JITExecutable_Check(PyStackRef_AsPyObjectBorrow(frame->f_executable))) {
+        return _PyFrame_MakeAndSetFrameObject(frame);
+    }
+#endif
 
     assert(!_PyFrame_IsIncomplete(frame));
     PyFrameObject *res =  frame->frame_obj;
@@ -309,7 +380,7 @@ _PyFrame_ClearLocals(_PyInterpreterFrame *frame);
  * take should  be set to 1 for heap allocated
  * frames like the ones in generators and coroutines.
  */
-void
+PyAPI_FUNC(void)
 _PyFrame_ClearExceptCode(_PyInterpreterFrame * frame);
 
 int

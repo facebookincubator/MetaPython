@@ -40,6 +40,12 @@ PyAPI_FUNC(int) PyUnstable_InterpreterFrame_GetLine(struct _PyInterpreterFrame *
 #define PyUnstable_EXECUTABLE_KIND_PY_FUNCTION 1
 #define PyUnstable_EXECUTABLE_KIND_BUILTIN_FUNCTION 3
 #define PyUnstable_EXECUTABLE_KIND_METHOD_DESCRIPTOR 4
+
+#ifdef META_PYTHON
+#define PyUnstable_EXECUTABLE_KIND_JIT 5
+#define PyUnstable_EXECUTABLE_KINDS 6
+#else
 #define PyUnstable_EXECUTABLE_KINDS 5
+#endif
 
 PyAPI_DATA(const PyTypeObject *) const PyUnstable_ExecutableKinds[PyUnstable_EXECUTABLE_KINDS+1];

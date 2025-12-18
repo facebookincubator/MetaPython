@@ -86,6 +86,19 @@ struct _PyAsyncGenObject {
     _PyGenObject_HEAD(ag)
 };
 
+#ifdef META_PYTHON
+
+typedef int (*_PyFrame_Reifier)(struct _PyInterpreterFrame *, PyObject *reifier);
+
+typedef struct {
+    PyObject_HEAD
+    PyCodeObject *je_code;
+    PyObject *je_state;
+    _PyFrame_Reifier je_reifier;
+} PyUnstable_PyJitExecutable;
+
+#endif
+
 #undef _PyGenObject_HEAD
 
 

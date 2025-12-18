@@ -2391,6 +2391,9 @@ static PyTypeObject* static_types[] = {
     &PyTuple_Type,
     &PyUnicodeIter_Type,
     &PyUnicode_Type,
+#ifdef META_PYTHON
+    &PyUnstable_JITExecutable_Type,
+#endif
     &PyWrapperDescr_Type,
     &PyZip_Type,
     &Py_GenericAliasType,
