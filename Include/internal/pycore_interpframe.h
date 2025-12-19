@@ -19,7 +19,10 @@ extern "C" {
 
 #ifdef META_PYTHON
 
-__attribute__((weak)) PyAPI_DATA(PyTypeObject) PyUnstable_JITExecutable_Type;
+#ifndef WIN32
+__attribute__((weak))
+#endif
+PyAPI_DATA(PyTypeObject) PyUnstable_JITExecutable_Type;
 
 #define PyUnstable_JITExecutable_Check(op) Py_IS_TYPE((op), &PyUnstable_JITExecutable_Type)
 
