@@ -1774,7 +1774,7 @@
     <elf-symbol name='PyType_Type' size='416' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='PyUnicodeIter_Type' size='416' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='PyUnicode_Type' size='416' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
-    <elf-symbol name='PyUnstable_ExecutableKinds' size='48' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
+    <elf-symbol name='PyUnstable_ExecutableKinds' size='56' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='PyWrapperDescr_Type' size='416' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='PyZip_Type' size='416' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
     <elf-symbol name='Py_BytesWarningFlag' size='4' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes'/>
@@ -27908,7 +27908,7 @@
   </abi-instr>
   <abi-instr address-size='64' path='Python/frame.c' comp-dir-path='/home/runner/work/cpython/cpython' language='LANG_C11'>
     <array-type-def dimensions='1' type-id='type-id-1699' size-in-bits='384' id='type-id-1700'>
-      <subrange length='6' type-id='type-id-2' id='type-id-479'/>
+      <subrange length='7' type-id='type-id-2' id='type-id-479'/>
     </array-type-def>
     <qualified-type-def type-id='type-id-271' const='yes' id='type-id-1701'/>
     <pointer-type-def type-id='type-id-1701' size-in-bits='64' id='type-id-1702'/>
