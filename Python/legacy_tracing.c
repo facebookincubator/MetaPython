@@ -686,6 +686,7 @@ maybe_set_opcode_trace(PyThreadState *tstate)
     if (iframe == NULL) {
         return 0;
     }
+    _PyFrame_EnsureFrameFullyInitialized(iframe);
     PyFrameObject *frame = iframe->frame_obj;
     if (frame == NULL || !frame->f_trace_opcodes) {
         return 0;
