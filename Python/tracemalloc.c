@@ -842,7 +842,7 @@ _PyTraceMalloc_Start(int max_nframe)
 
     /* everything is ready: start tracing Python memory allocations */
     TABLES_LOCK();
-    tracemalloc_config.tracing = 1;
+    _Py_atomic_store_int_relaxed(&tracemalloc_config.tracing, 1);
     TABLES_UNLOCK();
 
     return 0;
@@ -859,7 +859,7 @@ _PyTraceMalloc_Stop(void)
     }
 
     /* stop tracing Python memory allocations */
-    tracemalloc_config.tracing = 0;
+    _Py_atomic_store_int_relaxed(&tracemalloc_config.tracing, 0);
 
     /* unregister the hook on memory allocators */
     PyMem_SetAllocator(PYMEM_DOMAIN_RAW, &allocators.raw);
@@ -1199,6 +1199,10 @@ int
 PyTraceMalloc_Track(unsigned int domain, uintptr_t ptr,
                     size_t size)
 {
+    if (_Py_atomic_load_int_relaxed(&tracemalloc_config.tracing) == 0) {
+        /* tracemalloc is not tracing: do nothing */
+        return -2;
+    }
     PyGILState_STATE gil_state = PyGILState_Ensure();
     TABLES_LOCK();
 
@@ -1220,6 +1224,11 @@ PyTraceMalloc_Track(unsigned int domain, uintptr_t ptr,
 int
 PyTraceMalloc_Untrack(unsigned int domain, uintptr_t ptr)
 {
+    if (_Py_atomic_load_int_relaxed(&tracemalloc_config.tracing) == 0) {
+        /* tracemalloc is not tracing: do nothing */
+        return -2;
+    }
+
     TABLES_LOCK();
 
     int result;

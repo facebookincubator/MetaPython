@@ -88,6 +88,8 @@ struct _ceval_runtime_state {
         FILE *map_file;
         Py_ssize_t persist_after_fork;
         _PyFrameEvalFunction prev_eval_frame;
+        Py_ssize_t trampoline_refcount;
+        int code_watcher_id;
 #else
         int _not_used;
 #endif
