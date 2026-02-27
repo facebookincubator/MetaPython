@@ -23,9 +23,16 @@ typedef enum {
 } CiJITGenState;
 
 /* Offsets for fields in jit::GenFooterData for fast access from C code.
- * These values are verified by static_assert in runtime.h. */
+ * These values are verified by static_assert in context.h. */
+#if defined(__aarch64__)
+/* On aarch64, GenDataFooter has an extra savedReturnIP field after
+ * returnAddress, shifting subsequent fields by 8 bytes. */
+#define Ci_GEN_JIT_DATA_OFFSET_STATE 40
+#define Ci_GEN_JIT_DATA_OFFSET_YIELD_POINT 32
+#else
 #define Ci_GEN_JIT_DATA_OFFSET_STATE 32
 #define Ci_GEN_JIT_DATA_OFFSET_YIELD_POINT 24
+#endif
 
 /* Functions for extracting the state for generator objects known to be JIT
  * controlled. Implemented as inline functions using hard-coded offsets for
