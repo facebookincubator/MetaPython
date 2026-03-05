@@ -1015,6 +1015,18 @@ _Py_module_getattro_impl(PyModuleObject *m, PyObject *name, int suppress)
         }
     }
     else {
+#ifdef META_PYTHON
+        if (PyErr_ExceptionMatches(PyExc_ImportCycleError)) {
+            // ImportCycleError from lazy import resolution means the attribute
+            // could not be resolved due to a circular import. Convert to
+            // AttributeError so callers (including C extensions like Cython)
+            // that only handle AttributeError can use their recovery paths.
+            // This is consistent with the suppress=1 path above and
+            // _PyObject_LookupAttr in object.c.
+            PyErr_Clear();
+        }
+        else
+#endif
         if (!PyErr_ExceptionMatches(PyExc_AttributeError)) {
             // pass up non-AttributeError exception
             return NULL;
