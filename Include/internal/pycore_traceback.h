@@ -31,7 +31,7 @@ PyAPI_FUNC(void) _PyTraceback_Add(const char *, const char *, int);
 
    This function is signal safe. */
 
-extern void _Py_DumpTraceback(
+PyAPI_FUNC(void) _Py_DumpTraceback(
     int fd,
     PyThreadState *tstate);
 
