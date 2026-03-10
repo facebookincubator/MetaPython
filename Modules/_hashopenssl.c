@@ -44,7 +44,9 @@
 
 #define MUNCH_SIZE INT_MAX
 
+#ifndef OPENSSL_NO_SCRYPT
 #define PY_OPENSSL_HAS_SCRYPT 1
+#endif
 #if defined(NID_sha3_224) && defined(NID_sha3_256) && defined(NID_sha3_384) && defined(NID_sha3_512)
 #define PY_OPENSSL_HAS_SHA3 1
 #endif
