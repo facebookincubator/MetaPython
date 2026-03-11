@@ -1809,13 +1809,19 @@ dummy_func(
             assert(index < DK_SIZE(keys));
             PyObject *res_o = FT_ATOMIC_LOAD_PTR_RELAXED(entries[index].me_value);
             DEOPT_IF(res_o == NULL);
-#ifdef META_PYTHON
-            DEOPT_IF(PyLazyImport_CheckExact(res_o));
-#endif
             #if Py_GIL_DISABLED
             int increfed = _Py_TryIncrefCompareStackRef(&entries[index].me_value, res_o, &res);
             DEOPT_IF(!increfed);
+#ifdef META_PYTHON
+            if (PyLazyImport_CheckExact(PyStackRef_AsPyObjectBorrow(res))) {
+                PyStackRef_CLOSE(res);
+                DEOPT_IF(true);
+            }
+#endif
             #else
+#ifdef META_PYTHON
+            DEOPT_IF(PyLazyImport_CheckExact(res_o));
+#endif
             res = PyStackRef_FromPyObjectNew(res_o);
             #endif
             STAT_INC(LOAD_GLOBAL, hit);
@@ -1831,13 +1837,19 @@ dummy_func(
             PyDictUnicodeEntry *entries = DK_UNICODE_ENTRIES(keys);
             PyObject *res_o = FT_ATOMIC_LOAD_PTR_RELAXED(entries[index].me_value);
             DEOPT_IF(res_o == NULL);
-#ifdef META_PYTHON
-            DEOPT_IF(PyLazyImport_CheckExact(res_o));
-#endif
             #if Py_GIL_DISABLED
             int increfed = _Py_TryIncrefCompareStackRef(&entries[index].me_value, res_o, &res);
             DEOPT_IF(!increfed);
+#ifdef META_PYTHON
+            if (PyLazyImport_CheckExact(PyStackRef_AsPyObjectBorrow(res))) {
+                PyStackRef_CLOSE(res);
+                DEOPT_IF(true);
+            }
+#endif
             #else
+#ifdef META_PYTHON
+            DEOPT_IF(PyLazyImport_CheckExact(res_o));
+#endif
             res = PyStackRef_FromPyObjectNew(res_o);
             #endif
             STAT_INC(LOAD_GLOBAL, hit);
