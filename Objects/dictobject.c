@@ -1793,7 +1793,7 @@ start:
         if (ix >= 0) {
 #ifdef META_PYTHON
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
-            startkey = ep->me_key;
+            startkey = FT_ATOMIC_LOAD_PTR_CONSUME(ep->me_key);
 #endif
             if (kind == DICT_KEYS_SPLIT) {
                 PyDictValues *values = _Py_atomic_load_ptr(&mp->ma_values);
@@ -1848,7 +1848,7 @@ start:
             value = _Py_TryXGetRef(&DK_ENTRIES(dk)[ix].me_value);
 #ifdef META_PYTHON
             PyDictKeyEntry *ep = &DK_ENTRIES(dk)[ix];
-            startkey = ep->me_key;
+            startkey = FT_ATOMIC_LOAD_PTR_CONSUME(ep->me_key);
             value_ptr = &DK_ENTRIES(dk)[ix].me_value;
 #endif
             if (value == NULL)
@@ -1962,7 +1962,7 @@ start:;
 
 #ifdef META_PYTHON
             PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
-            PyObject *startkey = ep->me_key;
+            PyObject *startkey = FT_ATOMIC_LOAD_PTR_CONSUME(ep->me_key);
             DictKeysKind kind = DK_KIND(dk);
             if (PyLazyImport_CheckExact(value)) {
                 assert(DK_LAZY_IMPORTS(dk));
