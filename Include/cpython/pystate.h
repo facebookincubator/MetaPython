@@ -208,6 +208,7 @@ struct _ts {
     */
     PyObject *threading_local_sentinel;
     _PyRemoteDebuggerSupport remote_debugger_support;
+    _PyStackChunk *datastack_cached_chunk;
 };
 
 /* other API */
