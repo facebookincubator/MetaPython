@@ -810,7 +810,9 @@ _Py_module_getattro_impl(PyModuleObject *m, PyObject *name, int suppress)
     assert(m->md_dict != NULL);
     getattr = PyDict_GetItemWithError(m->md_dict, &_Py_ID(__getattr__));
     if (getattr) {
+        Py_INCREF(getattr);
         PyObject *result = PyObject_CallOneArg(getattr, name);
+        Py_DECREF(getattr);
         if (result == NULL && suppress == 1 && PyErr_ExceptionMatches(PyExc_AttributeError)) {
             // suppress AttributeError
             PyErr_Clear();
