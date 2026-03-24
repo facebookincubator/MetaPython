@@ -753,7 +753,9 @@ Ci_module_lookupattro_impl(PyModuleObject *m, PyObject *name, int suppress)
         _Py_IDENTIFIER(__getattr__);
         getattr = _PyDict_GetItemIdWithError(m->md_dict, &PyId___getattr__);
         if (getattr) {
+            Py_INCREF(getattr);
             PyObject *result = PyObject_CallOneArg(getattr, name);
+            Py_DECREF(getattr);
             if (!result && suppress && PyErr_ExceptionMatches(PyExc_AttributeError)) {
                 PyErr_Clear();
             }
