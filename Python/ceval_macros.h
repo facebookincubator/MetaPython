@@ -105,10 +105,21 @@
 
 #define DISPATCH_INLINED(NEW_FRAME)                     \
     do {                                                \
-        assert(tstate->interp->eval_frame == NULL);     \
         _PyFrame_SetStackPointer(frame, stack_pointer); \
         frame->prev_instr = next_instr - 1;             \
         (NEW_FRAME)->previous = frame;                  \
+        if (Ci_hook_EvalFrame != NULL) {                \
+            PyObject *_hook_result = Ci_hook_EvalFrame( \
+                tstate, (NEW_FRAME), 0);                \
+            stack_pointer =                             \
+                _PyFrame_GetStackPointer(frame);        \
+            if (_hook_result == NULL) {                 \
+                goto error;                             \
+            }                                           \
+            STACK_GROW(1);                              \
+            SET_TOP(_hook_result);                      \
+            DISPATCH();                                 \
+        }                                               \
         frame = cframe.current_frame = (NEW_FRAME);     \
         CALL_STAT_INC(inlined_py_calls);                \
         goto start_frame;                               \
