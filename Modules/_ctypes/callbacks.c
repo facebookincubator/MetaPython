@@ -58,6 +58,7 @@ CThunkObject_dealloc(PyObject *myself)
     (void)CThunkObject_clear(myself);
     if (self->pcl_write) {
         Py_ffi_closure_free(self->pcl_write);
+        self->pcl_write = NULL;
     }
     PyObject_GC_Del(self);
     Py_DECREF(tp);
