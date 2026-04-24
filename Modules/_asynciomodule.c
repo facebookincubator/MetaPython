@@ -2255,7 +2255,7 @@ enter_task(PyObject *loop, PyObject *task)
             PyExc_RuntimeError,
             "Cannot enter into task %R while another " \
             "task %R is being executed.",
-            task, ts->asyncio_running_task, NULL);
+            task, ts->asyncio_running_task);
         return -1;
     }
 
@@ -2278,7 +2278,7 @@ leave_task(PyObject *loop, PyObject *task)
             PyExc_RuntimeError,
             "Invalid attempt to leave task %R while " \
             "task %R is entered.",
-            task, ts->asyncio_running_task ? ts->asyncio_running_task : Py_None, NULL);
+            task, ts->asyncio_running_task ? ts->asyncio_running_task : Py_None);
         return -1;
     }
     Py_CLEAR(ts->asyncio_running_task);
@@ -2343,7 +2343,7 @@ _asyncio_Task___init___impl(TaskObj *self, PyObject *coro, PyObject *loop,
         self->task_log_destroy_pending = 0;
         PyErr_Format(PyExc_TypeError,
                      "a coroutine was expected, got %R",
-                     coro, NULL);
+                     coro);
         return -1;
     }
 
@@ -4075,30 +4075,44 @@ _asyncio_all_tasks_impl(PyObject *module, PyObject *loop)
         return NULL;
     }
 
-    PyInterpreterState *interp = PyInterpreterState_Get();
-    // Stop the world and traverse the per-thread linked list
-    // of asyncio tasks for every thread, as well as the
-    // interpreter's linked list, and add them to `tasks`.
-    // The interpreter linked list is used for any lingering tasks
-    // whose thread state has been deallocated while the task was
-    // still alive. This can happen if a task is referenced by
-    // a different thread, in which case the task is moved to
-    // the interpreter's linked list from the thread's linked
-    // list before deallocation. See PyThreadState_Clear.
-    //
-    // The stop-the-world pause is required so that no thread
-    // modifies its linked list while being iterated here
-    // in parallel. This design allows for lock-free
-    // register_task/unregister_task for loops running in parallel
-    // in different threads (the general case).
-    _PyEval_StopTheWorld(interp);
-    int ret = add_tasks_interp(interp, (PyListObject *)tasks);
-    _PyEval_StartTheWorld(interp);
-    if (ret < 0) {
-        // call any escaping calls after starting the world to avoid any deadlocks.
-        Py_DECREF(tasks);
-        Py_DECREF(loop);
-        return NULL;
+    _PyThreadStateImpl *ts = (_PyThreadStateImpl *)_PyThreadState_GET();
+    if (ts->asyncio_running_loop == loop) {
+        // Fast path for the current running loop of current thread
+        // no locking or stop the world pause is required
+        struct llist_node *head = &ts->asyncio_tasks_head;
+        if (add_tasks_llist(head, (PyListObject *)tasks) < 0) {
+            Py_DECREF(tasks);
+            Py_DECREF(loop);
+            return NULL;
+        }
+    }
+    else {
+        // Slow path for loop running in different thread
+        PyInterpreterState *interp = ts->base.interp;
+        // Stop the world and traverse the per-thread linked list
+        // of asyncio tasks for every thread, as well as the
+        // interpreter's linked list, and add them to `tasks`.
+        // The interpreter linked list is used for any lingering tasks
+        // whose thread state has been deallocated while the task was
+        // still alive. This can happen if a task is referenced by
+        // a different thread, in which case the task is moved to
+        // the interpreter's linked list from the thread's linked
+        // list before deallocation. See PyThreadState_Clear.
+        //
+        // The stop-the-world pause is required so that no thread
+        // modifies its linked list while being iterated here
+        // in parallel. This design allows for lock-free
+        // register_task/unregister_task for loops running in parallel
+        // in different threads (the general case).
+        _PyEval_StopTheWorld(interp);
+        int ret = add_tasks_interp(interp, (PyListObject *)tasks);
+        _PyEval_StartTheWorld(interp);
+        if (ret < 0) {
+            // call any escaping calls after starting the world to avoid any deadlocks.
+            Py_DECREF(tasks);
+            Py_DECREF(loop);
+            return NULL;
+        }
     }
 
     // All the tasks are now in the list, now filter the tasks which are done

@@ -682,7 +682,7 @@ func_set_code(PyObject *self, PyObject *value, void *Py_UNUSED(ignored))
     if (nclosure != nfree) {
         PyErr_Format(PyExc_ValueError,
                      "%U() requires a code object with %zd free vars,"
-                     " not %zd",
+                     " not %d",
                      op->func_name,
                      nclosure, nfree);
         return -1;
@@ -1069,7 +1069,7 @@ func_new_impl(PyTypeObject *type, PyCodeObject *code, PyObject *globals,
     nclosure = closure == Py_None ? 0 : PyTuple_GET_SIZE(closure);
     if (code->co_nfreevars != nclosure)
         return PyErr_Format(PyExc_ValueError,
-                            "%U requires closure of length %zd, not %zd",
+                            "%U requires closure of length %d, not %zd",
                             code->co_name, code->co_nfreevars, nclosure);
     if (nclosure) {
         Py_ssize_t i;
@@ -1472,6 +1472,19 @@ cm_descr_get(PyObject *self, PyObject *obj, PyObject *type)
     return PyMethod_New(cm->cm_callable, type);
 }
 
+static PyObject *
+cm_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    classmethod *cm = (classmethod *)PyType_GenericAlloc(type, 0);
+    if (cm == NULL) {
+        return NULL;
+    }
+    cm->cm_callable = Py_None;
+    cm->cm_dict = NULL;
+    _PyObject_SetDeferredRefcount((PyObject *)cm);
+    return (PyObject *)cm;
+}
+
 static int
 cm_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -1618,7 +1631,7 @@ PyTypeObject PyClassMethod_Type = {
     offsetof(classmethod, cm_dict),             /* tp_dictoffset */
     cm_init,                                    /* tp_init */
     PyType_GenericAlloc,                        /* tp_alloc */
-    PyType_GenericNew,                          /* tp_new */
+    cm_new,                                     /* tp_new */
     PyObject_GC_Del,                            /* tp_free */
 };
 
@@ -1701,6 +1714,19 @@ sm_descr_get(PyObject *self, PyObject *obj, PyObject *type)
         return NULL;
     }
     return Py_NewRef(sm->sm_callable);
+}
+
+static PyObject *
+sm_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    staticmethod *sm = (staticmethod *)PyType_GenericAlloc(type, 0);
+    if (sm == NULL) {
+        return NULL;
+    }
+    sm->sm_callable = Py_None;
+    sm->sm_dict = NULL;
+    _PyObject_SetDeferredRefcount((PyObject *)sm);
+    return (PyObject *)sm;
 }
 
 static int
@@ -1853,7 +1879,7 @@ PyTypeObject PyStaticMethod_Type = {
     offsetof(staticmethod, sm_dict),            /* tp_dictoffset */
     sm_init,                                    /* tp_init */
     PyType_GenericAlloc,                        /* tp_alloc */
-    PyType_GenericNew,                          /* tp_new */
+    sm_new,                                     /* tp_new */
     PyObject_GC_Del,                            /* tp_free */
 };
 
@@ -1866,4 +1892,18 @@ PyStaticMethod_New(PyObject *callable)
         sm->sm_callable = Py_NewRef(callable);
     }
     return (PyObject *)sm;
+}
+
+PyObject *
+_PyClassMethod_GetFunc(PyObject *self)
+{
+    classmethod *cm = _PyClassMethod_CAST(self);
+    return cm->cm_callable;
+}
+
+PyObject *
+_PyStaticMethod_GetFunc(PyObject *self)
+{
+    staticmethod *sm = _PyStaticMethod_CAST(self);
+    return sm->sm_callable;
 }

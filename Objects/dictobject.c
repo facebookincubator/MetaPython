@@ -1937,78 +1937,54 @@ read_failed:
     return ix;
 }
 
+static Py_ssize_t
+lookup_threadsafe_unicode(PyDictKeysObject *dk, PyObject *key, Py_hash_t hash, _PyStackRef *value_addr)
+{
+    assert(DK_KIND(dk) == DICT_KEYS_UNICODE);
+    assert(PyUnicode_CheckExact(key));
+
+    Py_ssize_t ix = unicodekeys_lookup_unicode_threadsafe(dk, key, hash);
+    if (ix == DKIX_EMPTY) {
+        *value_addr = PyStackRef_NULL;
+        return ix;
+    }
+    else if (ix >= 0) {
+        PyObject **addr_of_value = &DK_UNICODE_ENTRIES(dk)[ix].me_value;
+        PyObject *value = _Py_atomic_load_ptr(addr_of_value);
+        if (value == NULL) {
+            *value_addr = PyStackRef_NULL;
+            return DKIX_EMPTY;
+        }
+#ifdef META_PYTHON
+        if (PyLazyImport_CheckExact(value)) {
+            assert(DK_LAZY_IMPORTS(dk));
+            return DKIX_KEY_CHANGED;
+        }
+#endif
+        if (_PyObject_HasDeferredRefcount(value)) {
+            *value_addr =  (_PyStackRef){ .bits = (uintptr_t)value | Py_TAG_DEFERRED };
+            return ix;
+        }
+        if (_Py_TryIncrefCompare(addr_of_value, value)) {
+            *value_addr = PyStackRef_FromPyObjectSteal(value);
+            return ix;
+        }
+        return DKIX_KEY_CHANGED;
+    }
+    assert(ix == DKIX_KEY_CHANGED);
+    return ix;
+}
+
 Py_ssize_t
 _Py_dict_lookup_threadsafe_stackref(PyDictObject *mp, PyObject *key, Py_hash_t hash, _PyStackRef *value_addr)
 {
-#ifdef META_PYTHON
-start:;
-#endif
     ensure_shared_on_read(mp);
 
     PyDictKeysObject *dk = _Py_atomic_load_ptr_acquire(&mp->ma_keys);
     if (DK_KIND(dk) == DICT_KEYS_UNICODE && PyUnicode_CheckExact(key)) {
-        Py_ssize_t ix = unicodekeys_lookup_unicode_threadsafe(dk, key, hash);
-        if (ix == DKIX_EMPTY) {
-            *value_addr = PyStackRef_NULL;
+        Py_ssize_t ix = lookup_threadsafe_unicode(dk, key, hash, value_addr);
+        if (ix != DKIX_KEY_CHANGED) {
             return ix;
-        }
-        else if (ix >= 0) {
-            PyObject **addr_of_value = &DK_UNICODE_ENTRIES(dk)[ix].me_value;
-            PyObject *value = _Py_atomic_load_ptr(addr_of_value);
-            if (value == NULL) {
-                *value_addr = PyStackRef_NULL;
-                return DKIX_EMPTY;
-            }
-
-#ifdef META_PYTHON
-            PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(dk)[ix];
-            PyObject *startkey = FT_ATOMIC_LOAD_PTR_CONSUME(ep->me_key);
-            DictKeysKind kind = DK_KIND(dk);
-            if (PyLazyImport_CheckExact(value)) {
-                assert(DK_LAZY_IMPORTS(dk));
-                PyObject *resolved_value = _PyImport_LoadLazyImport(value, 0);
-                if (resolved_value == NULL) {
-                    *value_addr = PyStackRef_NULL;
-                    if (PyErr_Occurred()) {
-                        return DKIX_VALUE_ERROR;
-                    }
-                    return DKIX_EMPTY;
-                }
-
-                Py_BEGIN_CRITICAL_SECTION(mp);
-                /* If the dict hasn't mutated, update resolved_value, otherwise
-                * retry the lookup */
-                if (dk != mp->ma_keys || kind != DK_KIND(dk)) {
-                    Py_DECREF(resolved_value);
-                    goto start;
-                }
-                PyObject *key = kind != DICT_KEYS_GENERAL
-                    ? DK_UNICODE_ENTRIES(dk)[ix].me_key : DK_ENTRIES(dk)[ix].me_key;
-                if (key != startkey) {
-                    Py_DECREF(resolved_value);
-                    goto start;
-                }
-                if (*addr_of_value == value) {
-                    Py_DECREF(*addr_of_value);
-                    *addr_of_value = resolved_value;
-                } else {
-                    // Just the value was replaced, so return the new value.
-                    Py_DECREF(resolved_value);
-                    resolved_value = *addr_of_value;
-                }
-                Py_END_CRITICAL_SECTION();
-                value = resolved_value;
-            }
-#endif
-
-            if (_PyObject_HasDeferredRefcount(value)) {
-                *value_addr =  (_PyStackRef){ .bits = (uintptr_t)value | Py_TAG_DEFERRED };
-                return ix;
-            }
-            if (_Py_TryIncrefCompare(addr_of_value, value)) {
-                *value_addr = PyStackRef_FromPyObjectSteal(value);
-                return ix;
-            }
         }
     }
 
@@ -2048,6 +2024,54 @@ _Py_dict_lookup_threadsafe_stackref(PyDictObject *mp, PyObject *key, Py_hash_t h
 }
 
 #endif
+
+// Looks up the unicode key `key` in the dictionary. Note that `*method` may
+// already contain a valid value! See _PyObject_GetMethodStackRef().
+int
+_PyDict_GetMethodStackRef(PyDictObject *mp, PyObject *key, _PyStackRef *method)
+{
+    assert(PyUnicode_CheckExact(key));
+    Py_hash_t hash = hash_unicode_key(key);
+
+#ifdef Py_GIL_DISABLED
+    // NOTE: We can only do the fast-path lookup if we are on the owning
+    // thread or if the dict is already marked as shared so that the load
+    // of ma_keys is safe without a lock. We cannot call ensure_shared_on_read()
+    // in this code path without incref'ing the dict because the dict is a
+    // borrowed reference protected by QSBR, and acquiring the lock could lead
+    // to a quiescent state (allowing the dict to be freed).
+    if (_Py_IsOwnedByCurrentThread((PyObject *)mp) || IS_DICT_SHARED(mp)) {
+        PyDictKeysObject *dk = _Py_atomic_load_ptr_acquire(&mp->ma_keys);
+        if (dk->dk_kind == DICT_KEYS_UNICODE) {
+            _PyStackRef ref;
+            Py_ssize_t ix = lookup_threadsafe_unicode(dk, key, hash, &ref);
+            if (ix >= 0) {
+                assert(!PyStackRef_IsNull(ref));
+                PyStackRef_XSETREF(*method, ref);
+                return 1;
+            }
+            else if (ix == DKIX_EMPTY) {
+                return 0;
+            }
+            assert(ix == DKIX_KEY_CHANGED);
+        }
+    }
+#endif
+
+    PyObject *obj;
+    Py_INCREF(mp);
+    Py_ssize_t ix = _Py_dict_lookup_threadsafe(mp, key, hash, &obj);
+    Py_DECREF(mp);
+    if (ix == DKIX_ERROR) {
+        PyStackRef_CLEAR(*method);
+        return -1;
+    }
+    else if (ix >= 0 && obj != NULL) {
+        PyStackRef_XSETREF(*method, PyStackRef_FromPyObjectSteal(obj));
+        return 1;
+    }
+    return 0;  // not found
+}
 
 int
 _PyDict_HasOnlyStringKeys(PyObject *dict)
@@ -3508,6 +3532,21 @@ _PyDict_DelItemIf(PyObject *op, PyObject *key,
 }
 
 static void
+clear_embedded_values(PyDictValues *values, Py_ssize_t nentries)
+{
+    PyObject *refs[SHARED_KEYS_MAX_SIZE];
+    assert(nentries <= SHARED_KEYS_MAX_SIZE);
+    for (Py_ssize_t i = 0; i < nentries; i++) {
+        refs[i] = values->values[i];
+        values->values[i] = NULL;
+    }
+    values->size = 0;
+    for (Py_ssize_t i = 0; i < nentries; i++) {
+        Py_XDECREF(refs[i]);
+    }
+}
+
+static void
 clear_lock_held(PyObject *op)
 {
     PyDictObject *mp;
@@ -3536,20 +3575,18 @@ clear_lock_held(PyObject *op)
         assert(oldkeys->dk_refcnt == 1);
         dictkeys_decref(interp, oldkeys, IS_DICT_SHARED(mp));
     }
+    else if (oldvalues->embedded) {
+        clear_embedded_values(oldvalues, oldkeys->dk_nentries);
+    }
     else {
+        set_values(mp, NULL);
+        set_keys(mp, Py_EMPTY_KEYS);
         n = oldkeys->dk_nentries;
         for (i = 0; i < n; i++) {
             Py_CLEAR(oldvalues->values[i]);
         }
-        if (oldvalues->embedded) {
-            oldvalues->size = 0;
-        }
-        else {
-            set_values(mp, NULL);
-            set_keys(mp, Py_EMPTY_KEYS);
-            free_values(oldvalues, IS_DICT_SHARED(mp));
-            dictkeys_decref(interp, oldkeys, false);
-        }
+        free_values(oldvalues, IS_DICT_SHARED(mp));
+        dictkeys_decref(interp, oldkeys, false);
     }
     ASSERT_CONSISTENT(mp);
 }
@@ -5508,10 +5545,8 @@ dict_traverse(PyObject *op, visitproc visit, void *arg)
 
     if (DK_IS_UNICODE(keys)) {
         if (_PyDict_HasSplitTable(mp)) {
-            if (!mp->ma_values->embedded) {
-                for (i = 0; i < n; i++) {
-                    Py_VISIT(mp->ma_values->values[i]);
-                }
+            for (i = 0; i < n; i++) {
+                Py_VISIT(mp->ma_values->values[i]);
             }
         }
         else {
@@ -8129,16 +8164,21 @@ PyObject_VisitManagedDict(PyObject *obj, visitproc visit, void *arg)
     if((tp->tp_flags & Py_TPFLAGS_MANAGED_DICT) == 0) {
         return 0;
     }
-    if (tp->tp_flags & Py_TPFLAGS_INLINE_VALUES) {
+    PyDictObject *dict = _PyObject_ManagedDictPointer(obj)->dict;
+    if (dict != NULL) {
+        // GH-130327: If there's a managed dictionary available, we should
+        // *always* traverse it. The dict is responsible for traversing the
+        // inline values if it points to them.
+        Py_VISIT(dict);
+    }
+    else if (tp->tp_flags & Py_TPFLAGS_INLINE_VALUES) {
         PyDictValues *values = _PyObject_InlineValues(obj);
         if (values->valid) {
             for (Py_ssize_t i = 0; i < values->capacity; i++) {
                 Py_VISIT(values->values[i]);
             }
-            return 0;
         }
     }
-    Py_VISIT(_PyObject_ManagedDictPointer(obj)->dict);
     return 0;
 }
 
