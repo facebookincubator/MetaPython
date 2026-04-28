@@ -39,6 +39,14 @@ _PyFrame_EnsureFrameFullyInitialized(_PyInterpreterFrame *frame)
     return 0;
 }
 
+static inline bool _PyFrame_IsExternalFrame(_PyInterpreterFrame *frame)
+{
+    if (PyStackRef_IsNull(frame->f_executable)) {
+        return false;
+    }
+    return PyUnstable_JITExecutable_Check(PyStackRef_AsPyObjectBorrow(frame->f_executable));
+}
+
 #endif
 
 static inline PyCodeObject *_PyFrame_GetCode(_PyInterpreterFrame *f) {
@@ -59,12 +67,6 @@ static inline PyCodeObject *_PyFrame_GetCode(_PyInterpreterFrame *f) {
 static inline PyCodeObject*
 _PyFrame_SafeGetCode(_PyInterpreterFrame *f)
 {
-    // globals and builtins may be NULL on a legit frame, but it's unlikely.
-    // It's more likely that it's a sign of an invalid frame.
-    if (f->f_globals == NULL || f->f_builtins == NULL) {
-        return NULL;
-    }
-
     if (PyStackRef_IsNull(f->f_executable)) {
         return NULL;
     }
@@ -78,13 +80,20 @@ _PyFrame_SafeGetCode(_PyInterpreterFrame *f)
         return NULL;
     }
 #ifdef META_PYTHON
-    if (PyUnstable_JITExecutable_Check(executable)) {
+    if (_PyFrame_IsExternalFrame(f)) {
         executable = (PyObject *)((PyUnstable_PyJitExecutable *)executable)->je_code;
         if (_PyObject_IsFreed(executable)) {
             return NULL;
         }
-    }
+    } else
 #endif
+    {
+        // globals and builtins may be NULL on a legit frame, but it's unlikely.
+        // It's more likely that it's a sign of an invalid frame.
+        if (f->f_globals == NULL || f->f_builtins == NULL) {
+            return NULL;
+        }
+    }
     if (!PyCode_Check(executable)) {
         return NULL;
     }
