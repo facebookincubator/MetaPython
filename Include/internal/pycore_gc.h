@@ -350,7 +350,7 @@ struct _Ci_PyGCImpl;
  * generation     - Collect generations <= this value
  * reason         - Why we're collecting
  */
-typedef Py_ssize_t (*Ci_gc_collect_t)(struct _Ci_PyGCImpl *impl, PyThreadState* tstate, 
+typedef Py_ssize_t (*Ci_gc_collect_t)(struct _Ci_PyGCImpl *impl, PyThreadState* tstate,
                                       int generation, _PyGC_Reason reason);
 
 // Free a collector
