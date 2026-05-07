@@ -274,18 +274,25 @@ Root nodes
 Literals
 ^^^^^^^^
 
-.. class:: Constant(value)
+.. class:: Constant(value, kind)
 
    A constant value. The ``value`` attribute of the ``Constant`` literal contains the
    Python object it represents. The values represented can be instances of :class:`str`,
    :class:`bytes`, :class:`int`, :class:`float`, :class:`complex`, and :class:`bool`,
    and the constants :data:`None` and :data:`Ellipsis`.
 
+   The ``kind`` attribute is an optional string. For string literals with a
+   ``u`` prefix, ``kind`` is set to ``'u'``. For all other
+   constants, ``kind`` is ``None``.
+
    .. doctest::
 
         >>> print(ast.dump(ast.parse('123', mode='eval'), indent=4))
         Expression(
             body=Constant(value=123))
+        >>> print(ast.dump(ast.parse("u'hello'", mode='eval'), indent=4))
+        Expression(
+            body=Constant(value='hello', kind='u'))
 
 
 .. class:: FormattedValue(value, conversion, format_spec)
@@ -2549,6 +2556,20 @@ and classes for traversing abstract syntax trees:
              type_ignores=[])
 
 
+.. function:: compare(a, b, /, *, compare_attributes=False)
+
+   Recursively compares two ASTs.
+
+   *compare_attributes* affects whether AST attributes are considered
+   in the comparison. If *compare_attributes* is ``False`` (default), then
+   attributes are ignored. Otherwise they must all be equal. This
+   option is useful to check whether the ASTs are structurally equal but
+   differ in whitespace or similar details. Attributes include line numbers
+   and column offsets.
+
+   .. versionadded:: 3.14
+
+
 .. _ast-compiler-flags:
 
 Compiler flags
@@ -2582,20 +2603,6 @@ effects on the compilation of a program:
    (``# type: <type>``, ``# type: ignore <stuff>``).
 
    .. versionadded:: 3.8
-
-
-.. function:: compare(a, b, /, *, compare_attributes=False)
-
-   Recursively compares two ASTs.
-
-   *compare_attributes* affects whether AST attributes are considered
-   in the comparison. If *compare_attributes* is ``False`` (default), then
-   attributes are ignored. Otherwise they must all be equal. This
-   option is useful to check whether the ASTs are structurally equal but
-   differ in whitespace or similar details. Attributes include line numbers
-   and column offsets.
-
-   .. versionadded:: 3.14
 
 
 .. _ast-cli:
