@@ -119,6 +119,8 @@ PyAPI_FUNC(void) PyGILState_Release(PyGILState_STATE);
 */
 PyAPI_FUNC(PyThreadState *) PyGILState_GetThisThreadState(void);
 
+// Sets the thread state for multi-threaded GC
+PyAPI_FUNC(void) Ci_SetTStateForGC(PyThreadState *tstate);
 
 /* PEP 788 -- Protection against interpreter finalization */
 
