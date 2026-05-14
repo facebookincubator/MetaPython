@@ -21,6 +21,10 @@
 
 typedef struct _gc_runtime_state GCState;
 
+static void _Ci_PyGCImpl_Fini(GCState *gcstate);
+static void _Ci_PyGC_InitState(GCState *gcstate);
+
+
 #ifdef Py_DEBUG
 #  define GC_DEBUG
 #endif
@@ -148,6 +152,8 @@ _PyGC_Init(PyInterpreterState *interp)
     if (gcstate->callbacks == NULL) {
         return _PyStatus_NO_MEMORY();
     }
+
+    _Ci_PyGC_InitState(gcstate);
 
     return _PyStatus_OK();
 }
@@ -1420,7 +1426,7 @@ add_stats(GCState *gcstate, int gen, struct gc_generation_stats *stats)
 /* This is the main function.  Read this to understand how the
  * collection process works. */
 static Py_ssize_t
-gc_collect_main(PyThreadState *tstate, int generation, _PyGC_Reason reason)
+gc_collect_impl(struct _Ci_PyGCImpl *impl, PyThreadState *tstate, int generation, _PyGC_Reason reason)
 {
     int i;
     PyGC_Head *young; /* the generation we are examining */
@@ -1435,11 +1441,6 @@ gc_collect_main(PyThreadState *tstate, int generation, _PyGC_Reason reason)
     assert(gcstate->garbage != NULL);
     assert(!_PyErr_Occurred(tstate));
 
-    int expected = 0;
-    if (!_Py_atomic_compare_exchange_int(&gcstate->collecting, &expected, 1)) {
-        // Don't start a garbage collection if one is already in progress.
-        return 0;
-    }
     gcstate->frame = tstate->current_frame;
 
     if (generation == GENERATION_AUTO) {
@@ -1448,7 +1449,6 @@ gc_collect_main(PyThreadState *tstate, int generation, _PyGC_Reason reason)
         generation = gc_select_generation(gcstate);
         if (generation < 0) {
             // No generation needs to be collected.
-            _Py_atomic_store_int(&gcstate->collecting, 0);
             return 0;
         }
     }
@@ -1645,8 +1645,24 @@ gc_collect_main(PyThreadState *tstate, int generation, _PyGC_Reason reason)
 
     assert(!_PyErr_Occurred(tstate));
     gcstate->frame = NULL;
-    _Py_atomic_store_int(&gcstate->collecting, 0);
     return stats.uncollectable + stats.collected;
+}
+
+static Py_ssize_t
+gc_collect_main(PyThreadState *tstate, int generation, _PyGC_Reason reason)
+{
+    GCState *gcstate = &tstate->interp->gc;
+    int expected = 0;
+    if (!_Py_atomic_compare_exchange_int(&gcstate->collecting, &expected, 1)) {
+        // Don't start a garbage collection if one is already in progress.
+        return 0;
+    }
+
+    _Ci_PyGCImpl *impl = _Ci_PyGC_GetImpl(gcstate);
+    Py_ssize_t res = impl->collect(impl, tstate, generation, reason);
+
+    _Py_atomic_store_int(&gcstate->collecting, 0);
+    return res;
 }
 
 static int
@@ -1896,6 +1912,8 @@ _PyGC_Fini(PyInterpreterState *interp)
         finalize_unlink_gc_head(&gcstate->generations[i].head);
     }
     finalize_unlink_gc_head(&gcstate->permanent_generation.head);
+
+    _Ci_PyGCImpl_Fini(gcstate);
 }
 
 /* for debugging */
@@ -2170,5 +2188,106 @@ PyUnstable_GC_VisitObjects(gcvisitobjects_t callback, void *arg)
 done:
     gcstate->enabled = original_state;
 }
+
+/* We keep a mapping between GCState and GCImpl to avoid potential ABI breakage.
+ */
+typedef struct _Ci_PyGCImplListNode _Ci_PyGCImplListNode;
+
+struct _Ci_PyGCImplListNode {
+    GCState *gc_state;
+    _Ci_PyGCImpl *gc_impl;
+
+    _Ci_PyGCImplListNode *prev;
+    _Ci_PyGCImplListNode *next;
+};
+
+static _Ci_PyGCImplListNode *gc_impl_head;
+
+static _Ci_PyGCImplListNode *
+Ci_find_gc_impl_node(GCState *gc_state)
+{
+    for (_Ci_PyGCImplListNode *cur = gc_impl_head; cur != NULL; cur = cur->next) {
+        if (cur->gc_state == gc_state) {
+          return cur;
+        }
+    }
+    return NULL;
+}
+
+_Ci_PyGCImpl *
+_Ci_PyGC_SetImpl(GCState *gc_state, _Ci_PyGCImpl *impl)
+{
+    _Ci_PyGCImpl *old_gc_impl = NULL;
+
+    _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
+    if (node == NULL) {
+        node = PyMem_RawCalloc(1, sizeof(_Ci_PyGCImplListNode));
+        if (node == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "out of memory");
+            return NULL;
+        }
+
+        if (gc_impl_head != NULL) {
+            gc_impl_head->prev = node;
+        }
+        node->next = gc_impl_head;
+        gc_impl_head = node;
+    } else {
+        old_gc_impl = node->gc_impl;
+    }
+
+    node->gc_state = gc_state;
+    node->gc_impl = impl;
+
+    return old_gc_impl;
+}
+
+_Ci_PyGCImpl *
+_Ci_PyGC_GetImpl(GCState *gc_state)
+{
+    _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
+    return node->gc_impl;
+}
+
+static void
+_Ci_PyGCImpl_Fini(GCState *gc_state)
+{
+    _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
+    assert(node != NULL);
+
+    node->gc_impl->finalize(node->gc_impl);
+
+    if (node->prev != NULL) {
+        node->prev->next = node->next;
+    }
+    if (node->next != NULL) {
+        node->next->prev = node->prev;
+    }
+    if (gc_impl_head == node) {
+        gc_impl_head = node->next;
+    }
+
+    PyMem_RawFree(node);
+}
+
+static void
+_Ci_PyGC_InitState(GCState *gcstate)
+{
+    _Ci_PyGCImpl *default_impl = PyMem_RawCalloc(1, sizeof(_Ci_PyGCImpl));
+    if (default_impl == NULL) {
+        Py_FatalError("out of memory");
+        return;
+    }
+    default_impl->collect = gc_collect_impl;
+    default_impl->finalize = (Ci_gc_finalize_t)PyMem_RawFree;
+
+    _Ci_PyGC_SetImpl(gcstate, default_impl);
+}
+
+void _Ci_PyGC_ClearFreeLists(PyInterpreterState* interp)
+{
+    _PyGC_ClearAllFreeLists(interp);
+}
+
 
 #endif  // !Py_GIL_DISABLED

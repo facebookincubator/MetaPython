@@ -1220,6 +1220,10 @@ def assign_opcodes(
     # 128 is RESUME - it is hard coded as such in Tools/build/deepfreeze.py
     instmap["RESUME"] = 128
 
+    # Reserve 126 for EXTENDED_OPCODE if it's defined.
+    if "EXTENDED_OPCODE" in instructions:
+        instmap["EXTENDED_OPCODE"] = 126
+
     # This is an historical oddity.
     instmap["BINARY_OP_INPLACE_ADD_UNICODE"] = 3
 
