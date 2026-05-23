@@ -188,8 +188,10 @@ class GzipFile(_streams.BaseStream):
 
         The optional mtime argument is the timestamp requested by gzip. The time
         is in Unix format, i.e., seconds since 00:00:00 UTC, January 1, 1970.
-        If mtime is omitted or None, the current time is used. Use mtime = 0
-        to generate a compressed stream that does not depend on creation time.
+        Set mtime to 0 to generate a compressed stream that does not depend on
+        creation time. If mtime is omitted or None, the current time is used.
+        If the resulting mtime is outside the range 0 to 2**32-1, then the
+        value 0 is used instead.
 
         """
 
@@ -295,6 +297,8 @@ class GzipFile(_streams.BaseStream):
         mtime = self._write_mtime
         if mtime is None:
             mtime = time.time()
+        if not 0 <= mtime < 2**32:
+            mtime = 0
         write32u(self.fileobj, int(mtime))
         if compresslevel == _COMPRESS_LEVEL_BEST:
             xfl = b'\002'
@@ -606,10 +610,10 @@ class _GzipReader(_streams.DecompressReader):
             # Read a chunk of data from the file
             if self._decompressor.needs_input:
                 buf = self._fp.read(READ_BUFFER_SIZE)
-                uncompress = self._decompressor.decompress(buf, size)
             else:
-                uncompress = self._decompressor.decompress(b"", size)
+                buf = b""
 
+            uncompress = self._decompressor.decompress(buf, size)
             if self._decompressor.unused_data != b"":
                 # Prepend the already read bytes to the fileobj so they can
                 # be seen by _read_eof() and _read_gzip_header()
@@ -663,6 +667,8 @@ def compress(data, compresslevel=_COMPRESS_LEVEL_TRADEOFF, *, mtime=0):
     gzip_data = zlib.compress(data, level=compresslevel, wbits=31)
     if mtime is None:
         mtime = time.time()
+    if not 0 <= mtime < 2**32:
+        mtime = 0
     # Reuse gzip header created by zlib, replace mtime and OS byte for
     # consistency.
     header = struct.pack("<4sLBB", gzip_data, int(mtime), gzip_data[8], 255)
