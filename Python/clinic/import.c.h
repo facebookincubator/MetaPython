@@ -327,8 +327,9 @@ PyDoc_STRVAR(_imp_acquire_lock__doc__,
 "\n"
 "Acquires the interpreter\'s import lock for the current thread.\n"
 "\n"
-"This lock should be used by import hooks to ensure thread-safety when importing\n"
-"modules. On platforms without threads, this function does nothing.");
+"This lock should be used by import hooks to ensure thread-safety when\n"
+"importing modules.  On platforms without threads, this function does\n"
+"nothing.");
 
 #define _IMP_ACQUIRE_LOCK_METHODDEF    \
     {"acquire_lock", (PyCFunction)_imp_acquire_lock, METH_NOARGS, _imp_acquire_lock__doc__},
@@ -942,4 +943,4 @@ exit:
 #ifndef _IMP_EXEC_DYNAMIC_METHODDEF
     #define _IMP_EXEC_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_EXEC_DYNAMIC_METHODDEF) */
-/*[clinic end generated code: output=71114492e8787444 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=36db3fde84e35386 input=a9049054013a1b77]*/
