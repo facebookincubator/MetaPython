@@ -524,9 +524,9 @@ def copy_files(files, ns):
         if need_compile:
             for dest, src in need_compile:
                 compiled = [
-                    _compile_one_py(src, None, dest, optimize=0),
-                    _compile_one_py(src, None, dest, optimize=1),
-                    _compile_one_py(src, None, dest, optimize=2),
+                    _compile_one_py(src, None, dest, optimize=0, checked=False),
+                    _compile_one_py(src, None, dest, optimize=1, checked=False),
+                    _compile_one_py(src, None, dest, optimize=2, checked=False),
                 ]
                 for c in compiled:
                     if not c:
