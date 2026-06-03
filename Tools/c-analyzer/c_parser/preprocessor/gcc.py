@@ -11,7 +11,6 @@ FILES_WITHOUT_INTERNAL_CAPI = frozenset((
     '_testclinic_limited.c',
     'xxlimited.c',
     'xxlimited_35.c',
-    'xxlimited_3_13.c',
 ))
 
 # C files in the fhe following directories must not be built with

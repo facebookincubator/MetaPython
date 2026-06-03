@@ -484,63 +484,40 @@ def _read_exact(fp, n):
     return data
 
 
-def _read_until_null(fp, append_to):
-    '''Read until the first encountered null byte in fp.
-       Append to given byte array object'''
-    while True:
-        s = fp.read(1)
-        append_to += s
-        if not s or s == b'\000':
-            break
-
-
 def _read_gzip_header(fp):
     '''Read a gzip header from `fp` and progress to the end of the header.
 
     Returns last mtime if header was present or None otherwise.
     '''
     magic = fp.read(2)
-    if not magic:
+    if magic == b'':
         return None
 
     if magic != b'\037\213':
         raise BadGzipFile('Not a gzipped file (%r)' % magic)
-    base_header = _read_exact(fp, 8)
-    (method, flag, last_mtime) = struct.unpack("<BBIxx", base_header)
+
+    (method, flag, last_mtime) = struct.unpack("<BBIxx", _read_exact(fp, 8))
     if method != 8:
         raise BadGzipFile('Unknown compression method')
 
-    # Most common cases are no flags (gzip.compress, zlib.compress) or only
-    # FNAME set (GzipFile, gzip command line application). Exit early
-    # in those cases.
-    if not flag:
-        return last_mtime
-    if flag == FNAME:
+    if flag & FEXTRA:
+        # Read & discard the extra field, if present
+        extra_len, = struct.unpack("<H", _read_exact(fp, 2))
+        _read_exact(fp, extra_len)
+    if flag & FNAME:
         # Read and discard a null-terminated string containing the filename
         while True:
             s = fp.read(1)
             if not s or s==b'\000':
                 break
-        return last_mtime
-
-    # Processing for more complex flags. Save header parts for FHCRC checking.
-    header = bytearray(magic + base_header)
-    if flag & FEXTRA:
-        extra_len_bytes = _read_exact(fp, 2)
-        extra_len, = struct.unpack("<H", extra_len_bytes)
-        header += extra_len_bytes
-        header += _read_exact(fp, extra_len)
-    if flag & FNAME:
-        _read_until_null(fp, append_to=header)
     if flag & FCOMMENT:
-        _read_until_null(fp, append_to=header)
+        # Read and discard a null-terminated string containing a comment
+        while True:
+            s = fp.read(1)
+            if not s or s==b'\000':
+                break
     if flag & FHCRC:
-        # Header CRC is the last 16 bits of a crc32.
-        header_crc, = struct.unpack("<H", _read_exact(fp, 2))
-        true_crc = zlib.crc32(header) & 0xFFFF
-        if header_crc != true_crc:
-            raise BadGzipFile(f"Corrupted gzip header. Checksums do not "
-                               f"match: {true_crc:04x} != {header_crc:04x}")
+        _read_exact(fp, 2)     # Read & discard the 16-bit header CRC
     return last_mtime
 
 
