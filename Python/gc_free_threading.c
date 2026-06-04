@@ -465,6 +465,18 @@ gc_visit_stackref(_PyStackRef stackref)
     }
 }
 
+#ifdef META_PYTHON
+static int
+gc_visit_jit_deferred_ref(PyObject *obj, void* arg)
+{
+    (void)arg;
+    if (obj != NULL && _PyObject_GC_IS_TRACKED(obj) && !gc_is_frozen(obj)) {
+        gc_add_refs(obj, 1);
+    }
+    return 1;
+}
+#endif
+
 // Add 1 to the gc_refs for every deferred reference on each thread's stack.
 static void
 gc_visit_thread_stacks(PyInterpreterState *interp, struct collection_state *state)
@@ -498,6 +510,17 @@ gc_visit_thread_stacks(PyInterpreterState *interp, struct collection_state *stat
         }
     }
     _Py_FOR_EACH_TSTATE_END(interp);
+
+#ifdef META_PYTHON
+    if (interp->gc.jit_deferred_ref_visitor != NULL) {
+        int incomplete = interp->gc.jit_deferred_ref_visitor(
+            interp,
+            gc_visit_jit_deferred_ref);
+        if (incomplete != 0) {
+            state->skip_deferred_objects = 1;
+        }
+    }
+#endif
 }
 
 // Untrack objects that can never create reference cycles.
@@ -2976,6 +2999,16 @@ _PyGC_VisitObjectsWorldStopped(PyInterpreterState *interp,
     };
     gc_visit_heaps(interp, &custom_visitor_wrapper, &wrapper.base);
 }
+
+#ifdef META_PYTHON
+void
+CiUnstable_GC_SetJITDeferredRefVisitor(
+    PyInterpreterState *interp,
+    CiUnstable_gc_visit_deferred_refs_func visitor)
+{
+    interp->gc.jit_deferred_ref_visitor = visitor;
+}
+#endif
 
 void
 PyUnstable_GC_VisitObjects(gcvisitobjects_t callback, void *arg)

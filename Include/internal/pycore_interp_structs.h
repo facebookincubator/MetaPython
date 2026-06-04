@@ -260,6 +260,12 @@ struct _gc_runtime_state {
 
     /* Mutex held for gc_should_collect_mem_usage(). */
     PyMutex mutex;
+
+#ifdef META_PYTHON
+    int (*jit_deferred_ref_visitor)(
+        PyInterpreterState* interp,
+        int (*callback)(PyObject*, void*));
+#endif
 #else
     PyGC_Head *generation0;
 #endif

@@ -102,3 +102,12 @@ PyAPI_FUNC(PyObject *) PyUnstable_Object_GC_NewWithExtraData(PyTypeObject *,
  */
 typedef int (*gcvisitobjects_t)(PyObject*, void*);
 PyAPI_FUNC(void) PyUnstable_GC_VisitObjects(gcvisitobjects_t callback, void* arg);
+
+#if defined(META_PYTHON) && defined(Py_GIL_DISABLED)
+typedef int (*CiUnstable_gc_visit_deferred_refs_func)(
+    PyInterpreterState* interp,
+    gcvisitobjects_t callback);
+PyAPI_FUNC(void) CiUnstable_GC_SetJITDeferredRefVisitor(
+    PyInterpreterState* interp,
+    CiUnstable_gc_visit_deferred_refs_func visitor);
+#endif
