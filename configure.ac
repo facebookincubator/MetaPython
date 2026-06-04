@@ -1681,6 +1681,10 @@ fi
 AC_SUBST([ABIFLAGS])
 ABIFLAGS=""
 
+# Enable MetaPython.
+AC_DEFINE([META_PYTHON], [1],
+            [Define if you want MetaPython specific features])
+
 # Check for --with-pydebug
 AC_MSG_CHECKING([for --with-pydebug])
 AC_ARG_WITH([pydebug],

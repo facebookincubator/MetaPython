@@ -94,6 +94,9 @@ WIN32 is still required for the locale module.
 #endif
 #endif /* Py_BUILD_CORE || Py_BUILD_CORE_BUILTIN || Py_BUILD_CORE_MODULE */
 
+/* Define if you want MetaPython specific features */
+#define META_PYTHON 1
+
 /* Compiler specific defines */
 
 /* ------------------------------------------------------------------------*/

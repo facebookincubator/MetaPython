@@ -8068,6 +8068,11 @@ fi
 
 ABIFLAGS=""
 
+# Enable MetaPython.
+
+printf "%s\n" "#define META_PYTHON 1" >>confdefs.h
+
+
 # Check for --with-pydebug
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for --with-pydebug" >&5
 printf %s "checking for --with-pydebug... " >&6; }
