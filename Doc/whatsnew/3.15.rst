@@ -184,7 +184,7 @@ eager:
    import myapp.slow_module  # lazy (matches filter)
    import json               # eager (does not match filter)
 
-The proxy type itself is available as :data:`types.LazyImportType` for code
+The proxy type itself is available as :class:`types.LazyImportType` for code
 that needs to detect lazy imports programmatically.
 
 There are some restrictions on where the ``lazy`` keyword can be used. Lazy
@@ -514,10 +514,6 @@ specifically:
   purpose in :pep:`793`, with a new :c:type:`PySlot` structure
   introduced in :pep:`820`.
 
-The reference documentation for these features is complete, but currently
-aimed at early adopters.
-A migration guide is planned for an upcoming beta release.
-
 Note that Stable ABI does not offer all the functionality that CPython
 has to offer.
 Extensions that cannot switch to ``abi3t`` should continue to build for
@@ -532,6 +528,9 @@ If this is the case for your tool, compile for ``cp315t`` separately.
 If not using a build tool -- or when writing such a tool -- you can select
 ``abi3t`` by setting the macro :c:macro:`!Py_TARGET_ABI3T` as discussed
 in :ref:`abi3-compiling`.
+
+A practical :ref:`migration guide <abi3t-migration-howto>` for switching to
+``abi3t`` is available.
 
 .. seealso:: :pep:`803` for further details.
 
@@ -1662,7 +1661,7 @@ types
 -----
 
 * Expose the write-through :func:`locals` proxy type
-  as :data:`types.FrameLocalsProxyType`.
+  as :class:`types.FrameLocalsProxyType`.
   This represents the type of the :attr:`frame.f_locals` attribute,
   as described in :pep:`667`.
 
