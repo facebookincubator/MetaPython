@@ -47,9 +47,6 @@
 /* Define if --enable-ipv6 is specified */
 #undef ENABLE_IPV6
 
-/* Define if you want MetaPython specific features */
-#undef META_PYTHON
-
 /* Define if getpgrp() must be called as getpgrp(0). */
 #undef GETPGRP_HAVE_ARG
 
@@ -1669,6 +1666,9 @@
    <sysmacros.h>. */
 #undef MAJOR_IN_SYSMACROS
 
+/* Define if you want MetaPython specific features */
+#undef META_PYTHON
+
 /* Define if mvwdelch in curses.h is an expression. */
 #undef MVWDELCH_IS_EXPRESSION
 
@@ -2087,3 +2087,4 @@
 #endif
 
 #endif /*Py_PYCONFIG_H*/
+
