@@ -1956,16 +1956,30 @@ lookup_threadsafe_unicode(PyDictKeysObject *dk, PyObject *key, Py_hash_t hash, _
             return DKIX_EMPTY;
         }
 #ifdef META_PYTHON
-        if (PyLazyImport_CheckExact(value)) {
-            assert(DK_LAZY_IMPORTS(dk));
-            return DKIX_KEY_CHANGED;
-        }
+        // Lazy-import detection must run only after the value is safe to
+        // inspect: either deferred-refcounted or protected by a successful
+        // compare-and-incref.
 #endif
         if (_PyObject_HasDeferredRefcount(value)) {
+#ifdef META_PYTHON
+            if (PyLazyImport_CheckExact(value)) {
+                *value_addr = PyStackRef_NULL;
+                assert(DK_LAZY_IMPORTS(dk));
+                return DKIX_KEY_CHANGED;
+            }
+#endif
             *value_addr =  (_PyStackRef){ .bits = (uintptr_t)value | Py_TAG_DEFERRED };
             return ix;
         }
         if (_Py_TryIncrefCompare(addr_of_value, value)) {
+#ifdef META_PYTHON
+            if (PyLazyImport_CheckExact(value)) {
+                Py_DECREF(value);
+                *value_addr = PyStackRef_NULL;
+                assert(DK_LAZY_IMPORTS(dk));
+                return DKIX_KEY_CHANGED;
+            }
+#endif
             *value_addr = PyStackRef_FromPyObjectSteal(value);
             return ix;
         }
