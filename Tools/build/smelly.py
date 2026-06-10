@@ -13,9 +13,9 @@ import subprocess
 import sys
 import sysconfig
 
-ALLOWED_PREFIXES = ('Py', '_Py')
+ALLOWED_PREFIXES = ('Py', '_Py', '_Ci_Py')
 if sys.platform == 'darwin':
-    ALLOWED_PREFIXES += ('__Py',)
+    ALLOWED_PREFIXES += ('__Py', '__Ci_Py')
 
 # mimalloc doesn't use static, but it's symbols are not exported
 # from the shared library.  They do show up in the static library
