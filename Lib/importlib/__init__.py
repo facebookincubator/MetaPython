@@ -59,6 +59,8 @@ _unpack_uint32 = _bootstrap_external._unpack_uint32
 
 from ._bootstrap import __import__
 
+_UNSET = object()
+
 
 def is_lazy_imports_enabled():
     return _imp.is_lazy_imports_enabled()
@@ -74,7 +76,7 @@ def hydrate_lazy_objects():
     return _imp.hydrate_lazy_objects()
 
 
-def set_lazy_imports(enable = True, /, excluding = None, eager = None):
+def set_lazy_imports(enable = True, /, excluding = _UNSET, eager = _UNSET):
     """Programmatic API for enabling lazy imports at runtime.
 
     The optional argument `excluding` can be any container of strings; all the
@@ -84,7 +86,12 @@ def set_lazy_imports(enable = True, /, excluding = None, eager = None):
     The optional argument `eager` can be any container of strings; all imports for
     which the import full name is present in the container will be imported eagerly.
     """
-    return _imp._set_lazy_imports(enable, excluding=excluding, eager=eager)
+    kwargs = {}
+    if excluding is not _UNSET:
+        kwargs["excluding"] = excluding
+    if eager is not _UNSET:
+        kwargs["eager"] = eager
+    return _imp._set_lazy_imports(enable, **kwargs)
 
 
 def enable_lazy_imports_in_module(enable = True):
