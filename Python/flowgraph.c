@@ -3182,6 +3182,7 @@ remove_unused_consts(basicblock *entryblock, PyObject *consts)
 
     index_map = PyMem_Malloc(nconsts * sizeof(Py_ssize_t));
     if (index_map == NULL) {
+        PyErr_NoMemory();
         goto end;
     }
     for (Py_ssize_t i = 1; i < nconsts; i++) {
@@ -3234,6 +3235,7 @@ remove_unused_consts(basicblock *entryblock, PyObject *consts)
     /* adjust const indices in the bytecode */
     reverse_index_map = PyMem_Malloc(nconsts * sizeof(Py_ssize_t));
     if (reverse_index_map == NULL) {
+        PyErr_NoMemory();
         goto end;
     }
     for (Py_ssize_t i = 0; i < nconsts; i++) {
