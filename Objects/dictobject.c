@@ -871,7 +871,11 @@ free_keys_object(PyDictKeysObject *keys, bool use_qsbr)
     size_t size = _PyDict_KeysSize(keys);
 #endif
     if (DK_KIND(keys) == DICT_KEYS_SPLIT) {
+#ifdef META_PYTHON
         ptr = _PyDictKeys_AsSharedKeys(keys);
+#else
+        ptr = keys;
+#endif
 #ifdef Py_GIL_DISABLED
         size += offsetof(struct _instancekeysobject, dsk_keys);
 #endif
@@ -2335,7 +2339,9 @@ insert_split_key(PyDictKeysObject *keys, PyObject *key, Py_hash_t hash)
     if (ix == DKIX_EMPTY && keys->dk_usable > 0) {
         // Insert into new slot
         FT_ATOMIC_STORE_UINT32_RELAXED(keys->dk_version, 0);
+#ifdef META_PYTHON
         _PyDict_SplitKeysInvalidated(keys);
+#endif
         Py_ssize_t hashpos = find_empty_slot(keys, hash);
         ix = keys->dk_nentries;
         dictkeys_set_index(keys, hashpos, ix);
