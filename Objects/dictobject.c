@@ -873,11 +873,11 @@ free_keys_object(PyDictKeysObject *keys, bool use_qsbr)
     if (DK_KIND(keys) == DICT_KEYS_SPLIT) {
 #ifdef META_PYTHON
         ptr = _PyDictKeys_AsSharedKeys(keys);
-#else
-        ptr = keys;
-#endif
 #ifdef Py_GIL_DISABLED
         size += offsetof(struct _instancekeysobject, dsk_keys);
+#endif
+#else
+        ptr = keys;
 #endif
     }
 #ifdef Py_GIL_DISABLED
