@@ -219,7 +219,6 @@ const uint16_t _PyUop_Flags[MAX_UOP_ID+1] = {
     [_WITH_EXCEPT_START] = HAS_ERROR_FLAG | HAS_ESCAPES_FLAG,
     [_PUSH_EXC_INFO] = 0,
     [_GUARD_DORV_VALUES_INST_ATTR_FROM_DICT] = HAS_DEOPT_FLAG,
-    [_GUARD_KEYS_VERSION] = HAS_DEOPT_FLAG,
     [_LOAD_ATTR_METHOD_WITH_VALUES] = HAS_ARG_FLAG,
     [_LOAD_ATTR_METHOD_NO_DICT] = HAS_ARG_FLAG,
     [_LOAD_ATTR_NONDESCRIPTOR_WITH_VALUES] = HAS_ARG_FLAG | HAS_ESCAPES_FLAG,
@@ -438,7 +437,6 @@ const char *const _PyOpcode_uop_name[MAX_UOP_ID+1] = {
     [_GUARD_IS_NONE_POP] = "_GUARD_IS_NONE_POP",
     [_GUARD_IS_NOT_NONE_POP] = "_GUARD_IS_NOT_NONE_POP",
     [_GUARD_IS_TRUE_POP] = "_GUARD_IS_TRUE_POP",
-    [_GUARD_KEYS_VERSION] = "_GUARD_KEYS_VERSION",
     [_GUARD_NOS_DICT] = "_GUARD_NOS_DICT",
     [_GUARD_NOS_FLOAT] = "_GUARD_NOS_FLOAT",
     [_GUARD_NOS_INT] = "_GUARD_NOS_INT",
@@ -1013,8 +1011,6 @@ int _PyUop_num_popped(int opcode, int oparg)
         case _PUSH_EXC_INFO:
             return 1;
         case _GUARD_DORV_VALUES_INST_ATTR_FROM_DICT:
-            return 0;
-        case _GUARD_KEYS_VERSION:
             return 0;
         case _LOAD_ATTR_METHOD_WITH_VALUES:
             return 1;
