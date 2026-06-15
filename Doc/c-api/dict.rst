@@ -386,6 +386,47 @@ Dictionary Objects
       :term:`strong reference <strong reference>` (for example, using
       :c:func:`Py_NewRef`).
 
+.. c:function:: int PyDict_NextWithError(PyObject *p, Py_ssize_t *ppos, PyObject **pkey, PyObject **pvalue)
+
+   Similar to :c:func:`PyDict_Next`, but any :ref:`lazy import <lazy-imports>`
+   placeholder values encountered during iteration are resolved (by performing
+   the deferred import) before being returned through *pvalue*.  Because
+   resolving a lazy import can execute arbitrary code and fail, this function
+   may set an exception and return false even when the iteration has not yet
+   completed.  After the loop ends, call :c:func:`PyErr_Occurred` to
+   distinguish normal completion from an error.
+
+   .. note::
+
+      This function is specific to Meta's Python build and is only available
+      when lazy imports support is compiled in.
+
+.. c:function:: Py_ssize_t PyDict_ResolveLazyImports(PyObject *p)
+
+   Resolve every :ref:`lazy import <lazy-imports>` placeholder currently stored
+   in the dictionary *p*, performing the deferred imports so that the dictionary
+   no longer contains any unresolved lazy values.  Return the number of values
+   that were resolved, or ``-1`` with an exception set if resolving one of them
+   failed.
+
+   .. note::
+
+      This function is specific to Meta's Python build and is only available
+      when lazy imports support is compiled in.
+
+.. c:function:: int PyDict_IsLazyImport(PyObject *p, PyObject *name)
+
+   Return ``1`` if the value stored under *name* in dictionary *p* is an
+   unresolved :ref:`lazy import <lazy-imports>` placeholder, ``0`` if it is a
+   regular (already resolved) value or is not present, and ``-1`` with an
+   exception set on error.  Unlike a normal lookup, this does not trigger
+   resolution of the lazy import.
+
+   .. note::
+
+      This function is specific to Meta's Python build and is only available
+      when lazy imports support is compiled in.
+
 .. c:function:: int PyDict_Merge(PyObject *a, PyObject *b, int override)
 
    Iterate over mapping object *b* adding key-value pairs to dictionary *a*.

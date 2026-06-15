@@ -353,3 +353,51 @@ Importing Modules
    strings instead of Python :class:`str` objects.
 
    .. versionadded:: 3.14
+
+
+.. c:function:: PyObject* PyImport_CreateModuleFromInitfunc(PyObject *spec, PyObject* (*initfunc)(void))
+
+   Initialize an extension module directly from a module *spec* and its
+   initialization function *initfunc*, returning a new reference to the
+   resulting module object, or ``NULL`` with an exception set on failure.
+
+   Custom importers can use this to initialize statically linked extension
+   modules without registering them in the table of built-in modules (see
+   :c:func:`PyImport_ExtendInittab`).  *initfunc* is the module's
+   ``PyInit_<name>`` function and *spec* is the
+   :class:`~importlib.machinery.ModuleSpec` describing the module.
+
+
+.. _lazy-imports:
+
+Lazy imports
+------------
+
+The following APIs are specific to Meta's Python build.  When *lazy imports*
+are enabled, the work of importing a module is deferred until the imported
+name is first used: an import binds a lightweight placeholder object in the
+namespace, and the real import is performed on first lookup of that name.
+
+.. c:function:: PyObject* PyImport_SetLazyImports(PyObject *enabled, PyObject *excluding, PyObject *eager)
+
+   Configure lazy imports for the running interpreter.  *enabled* is a truth
+   value controlling whether lazy imports are turned on.  *excluding*, if not
+   ``NULL``, is a container of module names that should never be imported
+   lazily, and *eager*, if not ``NULL``, is a container of module names that
+   should always be imported eagerly.  Return a value reflecting the previous
+   configuration, or ``NULL`` with an exception set on failure.
+
+.. c:function:: int PyImport_IsLazyImportsEnabled(void)
+
+   Return a nonzero value if lazy imports are currently enabled for the running
+   interpreter, and ``0`` otherwise.
+
+.. c:var:: PyTypeObject PyLazyImport_Type
+
+   The type object for lazy import placeholder objects, the objects that stand
+   in for a not-yet-performed import until the imported name is first used.
+
+.. c:macro:: PyLazyImport_CheckExact(op)
+
+   Return non-zero if *op* is exactly a lazy import placeholder object (that is,
+   its type is :c:data:`PyLazyImport_Type`); this function always succeeds.

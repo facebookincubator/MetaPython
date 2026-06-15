@@ -1218,6 +1218,17 @@ Exception types
 .. versionadded:: 3.11
    :c:data:`PyExc_BaseExceptionGroup`.
 
+.. c:var:: PyObject *PyExc_ImportCycleError
+
+   A subclass of :c:data:`PyExc_ImportError` raised when resolving a
+   :ref:`lazy import <lazy-imports>` would require importing a module that is
+   already in the process of being imported, i.e. an import cycle is detected.
+
+   .. note::
+
+      This exception is specific to Meta's Python build and is only available
+      when lazy imports support is compiled in.
+
 
 OSError aliases
 ---------------
