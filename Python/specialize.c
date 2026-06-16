@@ -1100,7 +1100,11 @@ PyObject *descr, DescriptorClassification kind)
             SPECIALIZATION_FAIL(LOAD_ATTR, SPEC_FAIL_OUT_OF_VERSIONS);
             return 0;
         }
-        write_u32(cache->keys_version, keys_version);
+        /* The shared-keys version is no longer guarded at execution time;
+         * PyType_Modified() (raised when a new key is inserted into the
+         * shared keys) invalidates tp_version_tag instead. The keys_version
+         * is still computed above so specialization is skipped when a stable
+         * version cannot be obtained. */
         instr->op.code = LOAD_ATTR_METHOD_WITH_VALUES;
     }
     else {

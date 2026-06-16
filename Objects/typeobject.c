@@ -5100,7 +5100,7 @@ type_dealloc(PyTypeObject *type)
     Py_XDECREF(et->ht_qualname);
     Py_XDECREF(et->ht_slots);
     if (et->ht_cached_keys) {
-        _PyDictKeys_DecRef(et->ht_cached_keys);
+        _PyDict_RemoveKeysForClass(et);
     }
     Py_XDECREF(et->ht_module);
     PyMem_Free(et->_ht_tpname);
@@ -7455,7 +7455,7 @@ type_ready_managed_dict(PyTypeObject *type)
     }
     PyHeapTypeObject* et = (PyHeapTypeObject*)type;
     if (et->ht_cached_keys == NULL) {
-        et->ht_cached_keys = _PyDict_NewKeysForClass();
+        et->ht_cached_keys = _PyDict_NewKeysForClass(et);
         if (et->ht_cached_keys == NULL) {
             PyErr_NoMemory();
             return -1;

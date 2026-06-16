@@ -32,7 +32,9 @@ typedef struct {
     PyObject *me_value; /* This field is only meaningful for combined tables */
 } PyDictUnicodeEntry;
 
-extern PyDictKeysObject *_PyDict_NewKeysForClass(void);
+extern PyDictKeysObject *_PyDict_NewKeysForClass(PyHeapTypeObject *);
+extern void _PyDict_RemoveKeysForClass(PyHeapTypeObject *);
+extern void _PyDict_SplitKeysInvalidated(PyDictKeysObject* keys);
 extern PyObject *_PyDict_FromKeys(PyObject *, PyObject *, PyObject *);
 
 /* Gets a version number unique to the current state of the keys of dict, if possible.
@@ -116,6 +118,22 @@ struct _dictkeysobject {
     /* "PyDictKeyEntry or PyDictUnicodeEntry dk_entries[USABLE_FRACTION(DK_SIZE(dk))];" array follows:
        see the DK_ENTRIES() macro */
 };
+
+/* Wrapper for the shared keys of a class. The owning type is stored
+ * immediately before the keys object so that, given a split keys object, we
+ * can recover the type that owns it and invalidate it via PyType_Modified()
+ * when a new key is inserted. */
+struct _instancekeysobject {
+    PyTypeObject* dsk_owning_type;
+    struct _dictkeysobject dsk_keys;
+};
+
+static inline struct _instancekeysobject *_PyDictKeys_AsSharedKeys(struct _dictkeysobject *keys)
+{
+    assert(keys->dk_kind == DICT_KEYS_SPLIT);
+    return (struct _instancekeysobject *)(
+        (char *)keys - offsetof(struct _instancekeysobject, dsk_keys));
+}
 
 /* This must be no more than 250, for the prefix size to fit in one byte. */
 #define SHARED_KEYS_MAX_SIZE 30

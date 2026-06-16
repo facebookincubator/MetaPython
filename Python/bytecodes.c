@@ -2653,7 +2653,7 @@ dummy_func(
             exc_info->exc_value = Py_NewRef(new_exc);
         }
 
-        inst(LOAD_ATTR_METHOD_WITH_VALUES, (unused/1, type_version/2, keys_version/2, descr/4, self -- res2 if (oparg & 1), res)) {
+        inst(LOAD_ATTR_METHOD_WITH_VALUES, (unused/1, type_version/2, unused/2, descr/4, self -- res2 if (oparg & 1), res)) {
             /* Cached method object */
             PyTypeObject *self_cls = Py_TYPE(self);
             assert(type_version != 0);
@@ -2661,9 +2661,6 @@ dummy_func(
             assert(self_cls->tp_flags & Py_TPFLAGS_MANAGED_DICT);
             PyDictOrValues dorv = *_PyObject_DictOrValuesPointer(self);
             DEOPT_IF(!_PyDictOrValues_IsValues(dorv), LOAD_ATTR);
-            PyHeapTypeObject *self_heap_type = (PyHeapTypeObject *)self_cls;
-            DEOPT_IF(self_heap_type->ht_cached_keys->dk_version !=
-                     keys_version, LOAD_ATTR);
             STAT_INC(LOAD_ATTR, hit);
             assert(descr != NULL);
             res2 = Py_NewRef(descr);

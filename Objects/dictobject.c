@@ -610,17 +610,13 @@ _PyDict_CheckConsistency(PyObject *op, int check_content)
 }
 
 
-static PyDictKeysObject*
-new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode, bool lazy_imports)
+static inline int
+get_log2_bytes(uint8_t log2_size)
 {
-    PyDictKeysObject *dk;
-    Py_ssize_t usable;
     int log2_bytes;
-    size_t entry_size = unicode ? sizeof(PyDictUnicodeEntry) : sizeof(PyDictKeyEntry);
 
     assert(log2_size >= PyDict_LOG_MINSIZE);
 
-    usable = USABLE_FRACTION((size_t)1<<log2_size);
     if (log2_size < 8) {
         log2_bytes = log2_size;
     }
@@ -635,6 +631,41 @@ new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode, boo
     else {
         log2_bytes = log2_size + 2;
     }
+
+    return log2_bytes;
+}
+
+static inline void
+init_keys_object(PyDictKeysObject *dk, uint8_t log2_size, int log2_bytes,
+                 int kind, Py_ssize_t usable, size_t entry_size,
+                 bool lazy_imports)
+{
+#ifdef Py_REF_DEBUG
+    _Py_IncRefTotal(_PyInterpreterState_GET());
+#endif
+    dk->dk_refcnt = 1;
+    dk->dk_log2_size = log2_size;
+    dk->dk_log2_index_bytes = log2_bytes;
+    dk->dk_kind = kind;
+    dk->dk_lazy_imports = lazy_imports;
+    dk->dk_nentries = 0;
+    dk->dk_usable = usable;
+    dk->dk_version = 0;
+    memset(&dk->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
+    memset(&dk->dk_indices[(size_t)1 << log2_bytes], 0, entry_size * usable);
+}
+
+static PyDictKeysObject*
+new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode, bool lazy_imports)
+{
+    PyDictKeysObject *dk;
+    Py_ssize_t usable;
+    size_t entry_size = unicode ? sizeof(PyDictUnicodeEntry) : sizeof(PyDictKeyEntry);
+
+    assert(log2_size >= PyDict_LOG_MINSIZE);
+
+    usable = USABLE_FRACTION((size_t)1<<log2_size);
+    int log2_bytes = get_log2_bytes(log2_size);
 
 #if PyDict_MAXFREELIST > 0
     struct _Py_dict_state *state = get_dict_state(interp);
@@ -657,19 +688,9 @@ new_keys_object(PyInterpreterState *interp, uint8_t log2_size, bool unicode, boo
             return NULL;
         }
     }
-#ifdef Py_REF_DEBUG
-    _Py_IncRefTotal(_PyInterpreterState_GET());
-#endif
-    dk->dk_refcnt = 1;
-    dk->dk_log2_size = log2_size;
-    dk->dk_log2_index_bytes = log2_bytes;
-    dk->dk_kind = unicode ? DICT_KEYS_UNICODE : DICT_KEYS_GENERAL;
-    dk->dk_lazy_imports = lazy_imports;
-    dk->dk_nentries = 0;
-    dk->dk_usable = usable;
-    dk->dk_version = 0;
-    memset(&dk->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
-    memset(&dk->dk_indices[(size_t)1 << log2_bytes], 0, entry_size * usable);
+    init_keys_object(dk, log2_size, log2_bytes,
+                     unicode ? DICT_KEYS_UNICODE : DICT_KEYS_GENERAL,
+                     usable, entry_size, lazy_imports);
     return dk;
 }
 
@@ -707,7 +728,13 @@ free_keys_object(PyInterpreterState *interp, PyDictKeysObject *keys)
         return;
     }
 #endif
-    PyObject_Free(keys);
+    /* Split keys are embedded in a _instancekeysobject wrapper (which stores
+     * the owning type before the keys); free the wrapper, not the keys. */
+    void *ptr = keys;
+    if (keys->dk_kind == DICT_KEYS_SPLIT) {
+        ptr = _PyDictKeys_AsSharedKeys(keys);
+    }
+    PyObject_Free(ptr);
 }
 
 static inline PyDictValues*
@@ -1328,6 +1355,9 @@ insert_into_dictkeys(PyDictKeysObject *keys, PyObject *name)
         }
         /* Insert into new slot. */
         keys->dk_version = 0;
+        /* A new key is being added to a type's shared keys; invalidate the
+         * owning type so stale attribute caches are flushed. */
+        _PyDict_SplitKeysInvalidated(keys);
         Py_ssize_t hashpos = find_empty_slot(keys, hash);
         ix = keys->dk_nentries;
         PyDictUnicodeEntry *ep = &DK_UNICODE_ENTRIES(keys)[ix];
@@ -1415,6 +1445,11 @@ insertdict(PyInterpreterState *interp, PyDictObject *mp,
                 interp, PyDict_EVENT_ADDED, mp, key, value);
         /* Insert into new slot. */
         mp->ma_keys->dk_version = 0;
+        /* A split dict shares its keys with the owning type; adding a new key
+         * mutates those shared keys, so invalidate the owning type. */
+        if (mp->ma_keys->dk_kind == DICT_KEYS_SPLIT) {
+            _PyDict_SplitKeysInvalidated(mp->ma_keys);
+        }
 
         Py_ssize_t hashpos = find_empty_slot(mp->ma_keys, hash);
         dictkeys_set_index(mp->ma_keys, hashpos, mp->ma_keys->dk_nentries);
@@ -3695,6 +3730,11 @@ PyDict_SetDefault(PyObject *d, PyObject *key, PyObject *defaultobj)
         uint64_t new_version = _PyDict_NotifyEvent(
                 interp, PyDict_EVENT_ADDED, mp, key, defaultobj);
         mp->ma_keys->dk_version = 0;
+        /* A split dict shares its keys with the owning type; adding a new key
+         * mutates those shared keys, so invalidate the owning type. */
+        if (mp->ma_keys->dk_kind == DICT_KEYS_SPLIT) {
+            _PyDict_SplitKeysInvalidated(mp->ma_keys);
+        }
         Py_ssize_t hashpos = find_empty_slot(mp->ma_keys, hash);
         dictkeys_set_index(mp->ma_keys, hashpos, mp->ma_keys->dk_nentries);
         if (DK_IS_UNICODE(mp->ma_keys)) {
@@ -5730,21 +5770,54 @@ dictvalues_reversed(_PyDictViewObject *dv, PyObject *Py_UNUSED(ignored))
 /* Returns NULL if cannot allocate a new PyDictKeysObject,
    but does not set an error */
 PyDictKeysObject *
-_PyDict_NewKeysForClass(void)
+_PyDict_NewKeysForClass(PyHeapTypeObject *cls)
 {
-    PyInterpreterState *interp = _PyInterpreterState_GET();
-    PyDictKeysObject *keys = new_keys_object(
-            interp, NEXT_LOG2_SHARED_KEYS_MAX_SIZE, 1, 0);
-    if (keys == NULL) {
+    int log2_bytes = get_log2_bytes(NEXT_LOG2_SHARED_KEYS_MAX_SIZE);
+    Py_ssize_t usable = USABLE_FRACTION((size_t)1<<NEXT_LOG2_SHARED_KEYS_MAX_SIZE);
+
+    /* Allocate the keys object embedded in a _instancekeysobject wrapper so
+     * the owning type can be recovered from the (split) keys object. */
+    struct _instancekeysobject *shared_keys =
+                          PyObject_Malloc(sizeof(struct _instancekeysobject)
+                          + ((size_t)1 << log2_bytes)
+                          + sizeof(PyDictUnicodeEntry) * usable);
+    if (shared_keys == NULL) {
         PyErr_Clear();
+        return NULL;
     }
-    else {
-        assert(keys->dk_nentries == 0);
-        /* Set to max size+1 as it will shrink by one before each new object */
-        keys->dk_usable = SHARED_KEYS_MAX_SIZE;
-        keys->dk_kind = DICT_KEYS_SPLIT;
-    }
+
+    shared_keys->dsk_owning_type = (PyTypeObject *)cls;
+    PyDictKeysObject *keys = &shared_keys->dsk_keys;
+    /* Set dk_usable to max size as it will shrink by one before each new
+     * object */
+    init_keys_object(keys, NEXT_LOG2_SHARED_KEYS_MAX_SIZE, log2_bytes,
+                     DICT_KEYS_SPLIT, SHARED_KEYS_MAX_SIZE,
+                     sizeof(PyDictUnicodeEntry), 0);
+    assert(keys->dk_nentries == 0);
     return keys;
+}
+
+void
+_PyDict_RemoveKeysForClass(PyHeapTypeObject *cls)
+{
+    struct _instancekeysobject *shared_keys =
+            _PyDictKeys_AsSharedKeys(cls->ht_cached_keys);
+    /* Clear the back-pointer so any in-flight split-keys insertion no longer
+     * tries to invalidate this (now dying) type. */
+    shared_keys->dsk_owning_type = NULL;
+
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+    dictkeys_decref(interp, cls->ht_cached_keys);
+}
+
+void
+_PyDict_SplitKeysInvalidated(PyDictKeysObject *keys)
+{
+    struct _instancekeysobject *shared_keys = _PyDictKeys_AsSharedKeys(keys);
+    PyTypeObject *type = shared_keys->dsk_owning_type;
+    if (type) {
+        PyType_Modified(type);
+    }
 }
 
 #define CACHED_KEYS(tp) (((PyHeapTypeObject*)tp)->ht_cached_keys)
