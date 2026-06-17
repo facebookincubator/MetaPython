@@ -838,12 +838,8 @@ class PosixTester(unittest.TestCase):
             self.assertRaises(OSError, chown_func, first_param, 0, -1)
             check_stat(uid, gid)
             if hasattr(os, 'getgroups'):
-                # The kernel checks group membership for chown against the
-                # effective (fs) gid as well as the supplementary groups, so
-                # guard on getegid() too. In some sandboxes/user namespaces the
-                # process runs with an effective gid of 0 (and a non-zero uid),
-                # which makes chowning the group to 0 succeed even though 0 is
-                # absent from getgroups().
+                # Also check the effective gid, which the kernel
+                # accepts for chown even if not in getgroups().
                 if 0 not in os.getgroups() and os.getegid() != 0:
                     self.assertRaises(OSError, chown_func, first_param, -1, 0)
                     check_stat(uid, gid)

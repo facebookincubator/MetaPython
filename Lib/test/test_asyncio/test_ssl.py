@@ -1544,12 +1544,8 @@ class TestSSL(test_utils.TestCase):
             # This triggers bug gh-115514, also tested using mocks in
             # test.test_asyncio.test_selector_events.SelectorSocketTransportTests.test_write_buffer_after_close
             socket_transport = writer.transport._ssl_protocol._transport
+            # connection_lost may have already cleared _transport.
             if socket_transport is None:
-                # On a slow socket the remote shutdown may have already torn
-                # down the underlying transport (connection_lost clears
-                # _ssl_protocol._transport) before we get here. The delayed
-                # write path exercised below is then moot, so skip it instead
-                # of dereferencing None.
                 return
 
             class SocketWrapper:
