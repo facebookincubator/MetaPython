@@ -9803,6 +9803,8 @@ fi
     as_fn_append LINKFORSHARED " -sSTACK_SIZE=5MB"
         as_fn_append LINKFORSHARED " -sTEXTDECODER=2"
 
+            as_fn_append LDFLAGS_NODIST " -Wl,--wrap=getentropy"
+
     if test "x$enable_wasm_dynamic_linking" = xyes
 then :
 
@@ -9927,6 +9929,10 @@ printf "%s\n" "$ac_cv_thread_stack_size" >&6; }
 
     if test "$ac_cv_thread_stack_size" != "default" -a "$ac_cv_thread_stack_size" != "unknown"; then
         LDFLAGS="$LDFLAGS -Wl,-z,stack-size=$ac_cv_thread_stack_size"
+        # Stack size used by Python/ceval.c to set Py_C_STACK_SIZE
+
+printf "%s\n" "#define _Py_LINKER_THREAD_STACK_SIZE $ac_cv_thread_stack_size" >>confdefs.h
+
     fi
 fi
 
