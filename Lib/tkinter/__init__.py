@@ -1503,13 +1503,26 @@ class Misc:
         else:
             self.tk.call('bindtags', self._w, tagList)
 
-    def _bind(self, what, sequence, func, add, needcleanup=1):
+    def _delete_bind_commands(self, *what):
+        lines = self.tk.call(what).split('\n')
+        p = re.compile(r'if \{"\[([^ ]+) .*\]" == "break"\} break')
+        for line in lines:
+            m = p.fullmatch(line)
+            if m:
+                funcid = m[1]
+                try:
+                    self.deletecommand(funcid)
+                except TclError:
+                    pass
+
+    def _bind(self, what, sequence, func, add):
         """Internal function."""
         if isinstance(func, str):
             self.tk.call(what + (sequence, func))
         elif func:
-            funcid = self._register(func, self._substitute,
-                        needcleanup)
+            if not add:
+                self._delete_bind_commands(*what, sequence)
+            funcid = self._register(func, self._substitute, needcleanup=True)
             cmd = ('%sif {"[%s %s]" == "break"} break\n'
                    %
                    (add and '+' or '',
@@ -1575,6 +1588,7 @@ class Misc:
 
     def _unbind(self, what, funcid=None):
         if funcid is None:
+            self._delete_bind_commands(*what)
             self.tk.call(*what, '')
         else:
             lines = self.tk.call(what).split('\n')
@@ -1591,7 +1605,7 @@ class Misc:
         An additional boolean parameter ADD specifies whether FUNC will
         be called additionally to the other bound function or whether
         it will replace the previous function. See bind for the return value."""
-        return self._root()._bind(('bind', 'all'), sequence, func, add, True)
+        return self._root()._bind(('bind', 'all'), sequence, func, add)
 
     def unbind_all(self, sequence):
         """Unbind for all widgets for event SEQUENCE all functions."""
@@ -1605,7 +1619,7 @@ class Misc:
         whether it will replace the previous function. See bind for
         the return value."""
 
-        return self._root()._bind(('bind', className), sequence, func, add, True)
+        return self._root()._bind(('bind', className), sequence, func, add)
 
     def unbind_class(self, className, sequence):
         """Unbind for all widgets with bindtag CLASSNAME for event SEQUENCE
@@ -3011,7 +3025,7 @@ class Canvas(Widget, XView, YView):
         """Add tag NEWTAG to all items with TAGORID."""
         self.addtag(newtag, 'withtag', tagOrId)
 
-    def bbox(self, *args):
+    def bbox(self, *args):  # overrides Misc.bbox
         """Return a tuple of X1,Y1,X2,Y2 coordinates for a rectangle
         which encloses all items with tags specified as arguments."""
         return self._getints(
@@ -3150,7 +3164,7 @@ class Canvas(Widget, XView, YView):
         """Return all items with TAGORID."""
         return self.find('withtag', tagOrId)
 
-    def focus(self, *args):
+    def focus(self, *args):  # overrides Misc.focus
         """Set focus to the first item specified in ARGS."""
         return self.tk.call((self._w, 'focus') + args)
 
@@ -3196,7 +3210,7 @@ class Canvas(Widget, XView, YView):
         (optional below another item)."""
         self.tk.call((self._w, 'lower') + args)
 
-    lower = tag_lower
+    lower = tag_lower  # overrides Misc.lower
 
     def move(self, *args):
         """Move an item TAGORID given in ARGS."""
@@ -3224,7 +3238,7 @@ class Canvas(Widget, XView, YView):
         (optional above another item)."""
         self.tk.call((self._w, 'raise') + args)
 
-    lift = tkraise = tag_raise
+    lift = tkraise = tag_raise  # overrides Misc.tkraise
 
     def scale(self, *args):
         """Scale item TAGORID with XORIGIN, YORIGIN, XSCALE, YSCALE."""
@@ -3369,7 +3383,7 @@ class Entry(Widget, XView):
 
     select_adjust = selection_adjust
 
-    def selection_clear(self):
+    def selection_clear(self):  # overrides Misc.selection_clear
         """Clear the selection if it is in this widget."""
         self.tk.call(self._w, 'selection', 'clear')
 
@@ -3463,7 +3477,7 @@ class Listbox(Widget, XView, YView):
         """Activate item identified by INDEX."""
         self.tk.call(self._w, 'activate', index)
 
-    def bbox(self, index):
+    def bbox(self, index):  # overrides Misc.bbox
         """Return a tuple of X1,Y1,X2,Y2 coordinates for a rectangle
         which encloses the item identified by the given index."""
         return self._getints(self.tk.call(self._w, 'bbox', index)) or None
@@ -3519,7 +3533,7 @@ class Listbox(Widget, XView, YView):
 
     select_anchor = selection_anchor
 
-    def selection_clear(self, first, last=None):
+    def selection_clear(self, first, last=None):  # overrides Misc.selection_clear
         """Clear the selection from FIRST to LAST (included)."""
         self.tk.call(self._w,
                  'selection', 'clear', first, last)
@@ -3540,7 +3554,7 @@ class Listbox(Widget, XView, YView):
 
     select_set = selection_set
 
-    def size(self):
+    def size(self):  # overrides Misc.size
         """Return the number of elements in the listbox."""
         return self.tk.getint(self.tk.call(self._w, 'size'))
 
@@ -3856,7 +3870,7 @@ class Text(Widget, XView, YView):
         """
         Widget.__init__(self, master, 'text', cnf, kw)
 
-    def bbox(self, index):
+    def bbox(self, index):  # overrides Misc.bbox
         """Return a tuple of (x,y,width,height) which gives the bounding
         box of the visible part of the character at the given index."""
         return self._getints(
@@ -4041,7 +4055,7 @@ class Text(Widget, XView, YView):
                  self._w, "image", "create", index,
                  *self._options(cnf, kw))
 
-    def image_names(self):
+    def image_names(self):  # overrides Misc.image_names
         """Return all names of embedded images in this widget."""
         return self.tk.call(self._w, "image", "names")
 
@@ -4716,7 +4730,7 @@ class Spinbox(Widget, XView):
         """
         Widget.__init__(self, master, 'spinbox', cnf, kw)
 
-    def bbox(self, index):
+    def bbox(self, index):  # overrides Misc.bbox
         """Return a tuple of X1,Y1,X2,Y2 coordinates for a
         rectangle which encloses the character given by index.
 
@@ -4825,7 +4839,7 @@ class Spinbox(Widget, XView):
         """
         return self.selection("adjust", index)
 
-    def selection_clear(self):
+    def selection_clear(self):  # overrides Misc.selection_clear
         """Clear the selection
 
         If the selection isn't in this widget then the
@@ -4922,7 +4936,7 @@ class PanedWindow(Widget):
         """
         self.tk.call(self._w, 'forget', child)
 
-    forget = remove
+    forget = remove  # overrides Pack.forget
 
     def identify(self, x, y):
         """Identify the panedwindow component at point x, y
