@@ -45,11 +45,6 @@
   tgetent tgetflag tgetnum tgetstr tgoto tputs
   vidattr vidputs
 
-  Low-priority:
-  slk_attr slk_attr_off slk_attr_on slk_attr_set slk_attroff
-  slk_attron slk_attrset slk_clear slk_color slk_init slk_label
-  slk_noutrefresh slk_refresh slk_restore slk_set slk_touch
-
   Menu extension (ncurses and probably SYSV):
   current_item free_item free_menu item_count item_description
   item_index item_init item_name item_opts item_opts_off
@@ -765,6 +760,9 @@ static int
 curses_getcchar(const cchar_t *wcval, wchar_t *wstr, attr_t *attrs, int *pair)
 {
     short spair = 0;
+    /* getcchar() is not guaranteed to write the text of an empty cell, so make
+       the output an empty string by default. */
+    wstr[0] = L'\0';
 #if _NCURSES_EXTENDED_COLOR_FUNCS
     int rtn = getcchar(wcval, wstr, attrs, &spair, pair);
 #else
@@ -3079,7 +3077,8 @@ _curses_window_in_wch_impl(PyCursesWindowObject *self, int group_right_1,
                            int y, int x)
 /*[clinic end generated code: output=846ca8a82f2ecab4 input=a55dd215367dfbb1]*/
 {
-    curses_cell_t wcval;
+    /* Zeroed so getcchar() sees a NUL-terminated text array on read. */
+    curses_cell_t wcval = {0};
     cursesmodule_state *state = get_cursesmodule_state_by_win(self);
 #ifdef HAVE_NCURSESW
     int rtn;
@@ -3126,7 +3125,8 @@ static PyObject *
 _curses_window_getbkgrnd_impl(PyCursesWindowObject *self)
 /*[clinic end generated code: output=afec19cad00eff71 input=e06bf3d6bf90d2ec]*/
 {
-    curses_cell_t wcval;
+    /* Zeroed so getcchar() sees a NUL-terminated text array on read. */
+    curses_cell_t wcval = {0};
     cursesmodule_state *state = get_cursesmodule_state_by_win(self);
 #ifdef HAVE_NCURSESW
     if (wgetbkgrnd(self->win, &wcval) == ERR) {
@@ -3842,7 +3842,10 @@ PyCursesWindow_in_wchstr(PyObject *op, PyObject *args)
 
     n = Py_MIN(n, max_buf_size - 1);
     cursesmodule_state *state = get_cursesmodule_state_by_win(self);
-    curses_cell_t *buf = PyMem_New(curses_cell_t, n + 1);
+    /* Zero the cells: reading a cell back through getcchar() relies on the
+       cchar_t text array being NUL-terminated, which some curses libraries
+       only guarantee for the characters they actually write. */
+    curses_cell_t *buf = PyMem_Calloc(n + 1, sizeof(curses_cell_t));
     if (buf == NULL) {
         return PyErr_NoMemory();
     }
@@ -5960,6 +5963,7 @@ error:
     return res;
 }
 
+#ifdef HAVE_CURSES_SCR_DUMP
 /*[clinic input]
 _curses.scr_dump
 
@@ -6030,6 +6034,7 @@ static PyObject *
 _curses_scr_set(PyObject *module, PyObject *filename)
 /*[clinic end generated code: output=6056fdec12c5935f input=d248c20543cc289b]*/
 ScreenDumpFunctionBody(scr_set)
+#endif /* HAVE_CURSES_SCR_DUMP */
 
 /*[clinic input]
 _curses.halfdelay
@@ -6108,7 +6113,7 @@ _curses_has_key_impl(PyObject *module, int key)
 }
 #endif
 
-#if defined(NCURSES_EXT_FUNCS) && NCURSES_EXT_FUNCS
+#ifdef HAVE_CURSES_DEFINE_KEY
 /*[clinic input]
 _curses.define_key
 
@@ -6134,7 +6139,9 @@ _curses_define_key_impl(PyObject *module, const char *definition,
     return curses_check_err(module, define_key(definition, keycode),
                             "define_key", NULL);
 }
+#endif /* HAVE_CURSES_DEFINE_KEY */
 
+#ifdef HAVE_CURSES_KEY_DEFINED
 /*[clinic input]
 _curses.key_defined
 
@@ -6156,7 +6163,9 @@ _curses_key_defined_impl(PyObject *module, const char *definition)
 
     return PyLong_FromLong(key_defined(definition));
 }
+#endif /* HAVE_CURSES_KEY_DEFINED */
 
+#ifdef HAVE_CURSES_KEYOK
 /*[clinic input]
 _curses.keyok
 
@@ -6177,7 +6186,7 @@ _curses_keyok_impl(PyObject *module, int keycode, int enable)
 
     return curses_check_err(module, keyok(keycode, enable), "keyok", NULL);
 }
-#endif
+#endif /* HAVE_CURSES_KEYOK */
 
 /*[clinic input]
 _curses.init_color
@@ -6778,9 +6787,7 @@ _curses_new_prescr_impl(PyObject *module)
 }
 #endif /* HAVE_CURSES_NEW_PRESCR */
 
-#if defined(NCURSES_EXT_FUNCS) && NCURSES_EXT_FUNCS >= 20081102
-// https://invisible-island.net/ncurses/NEWS.html#index-t20080119
-
+#ifdef HAVE_CURSES_ESCDELAY
 /*[clinic input]
 _curses.get_escdelay
 
@@ -6797,6 +6804,9 @@ _curses_get_escdelay_impl(PyObject *module)
 {
     return PyLong_FromLong(ESCDELAY);
 }
+#endif /* HAVE_CURSES_ESCDELAY */
+
+#ifdef HAVE_CURSES_SET_ESCDELAY
 /*[clinic input]
 _curses.set_escdelay
     ms: int
@@ -6821,7 +6831,9 @@ _curses_set_escdelay_impl(PyObject *module, int ms)
 
     return curses_check_err(module, set_escdelay(ms), "set_escdelay", NULL);
 }
+#endif /* HAVE_CURSES_SET_ESCDELAY */
 
+#ifdef HAVE_CURSES_TABSIZE
 /*[clinic input]
 _curses.get_tabsize
 
@@ -6837,6 +6849,9 @@ _curses_get_tabsize_impl(PyObject *module)
 {
     return PyLong_FromLong(TABSIZE);
 }
+#endif /* HAVE_CURSES_TABSIZE */
+
+#ifdef HAVE_CURSES_SET_TABSIZE
 /*[clinic input]
 _curses.set_tabsize
     size: int
@@ -6860,7 +6875,7 @@ _curses_set_tabsize_impl(PyObject *module, int size)
 
     return curses_check_err(module, set_tabsize(size), "set_tabsize", NULL);
 }
-#endif
+#endif /* HAVE_CURSES_SET_TABSIZE */
 
 /*[clinic input]
 _curses.intrflush
@@ -7686,6 +7701,7 @@ _curses_termattrs_impl(PyObject *module)
 /*[clinic end generated code: output=b06f437fce1b6fc4 input=0559882a04f84d1d]*/
 NoArgReturnIntFunctionBody(termattrs)
 
+#ifdef HAVE_CURSES_TERM_ATTRS
 /*[clinic input]
 _curses.term_attrs
 
@@ -7703,6 +7719,7 @@ _curses_term_attrs_impl(PyObject *module)
 
     return PyLong_FromUnsignedLong(term_attrs());
 }
+#endif /* HAVE_CURSES_TERM_ATTRS */
 
 /*[clinic input]
 @permit_long_summary
@@ -8066,6 +8083,304 @@ _curses_unget_wch(PyObject *module, PyObject *ch)
 #endif
 }
 
+/* ------------------------------------------------------------------------ */
+/* Soft-label keys: a row of labels along the bottom line of the screen.    */
+/* All slk_* functions are module-level and act on one global label area.   */
+/* ------------------------------------------------------------------------ */
+
+/*[clinic input]
+_curses.slk_init
+
+    fmt: int = 0
+        Label layout: 0 = 3-2-3, 1 = 4-4 (8 labels each); 2 = 4-4-4,
+        3 = 4-4-4 with an index line (12 labels each, ncurses extensions).
+    /
+
+Reserve a line for soft labels and choose their layout.
+
+Must be called before initscr() or newterm().
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_init_impl(PyObject *module, int fmt)
+/*[clinic end generated code: output=8d3da3609be1a133 input=b9fec1776f56772a]*/
+{
+    if (fmt < 0 || fmt > 3) {
+        PyErr_SetString(PyExc_ValueError,
+                        "format must be an integer from 0 to 3");
+        return NULL;
+    }
+    return curses_check_err(module, slk_init(fmt), "slk_init", NULL);
+}
+
+/*[clinic input]
+_curses.slk_set
+
+    labnum: int
+        The label number (1 to 8, or 1 to 12 in a 12-label layout).
+    label: unicode
+        The text to display.
+    justify: int = 0
+        0 = left, 1 = center, 2 = right.
+    /
+
+Set the text of a soft label.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_set_impl(PyObject *module, int labnum, PyObject *label,
+                     int justify)
+/*[clinic end generated code: output=fc0f6b7af5acf32d input=1ce82b6cf23504d1]*/
+{
+    PyCursesStatefulInitialised(module);
+    if (justify < 0 || justify > 2) {
+        PyErr_SetString(PyExc_ValueError,
+                        "justification must be an integer from 0 to 2");
+        return NULL;
+    }
+    int rtn;
+#ifdef HAVE_NCURSESW
+    wchar_t *wstr = PyUnicode_AsWideCharString(label, NULL);
+    if (wstr == NULL) {
+        return NULL;
+    }
+    rtn = slk_wset(labnum, wstr, justify);
+    PyMem_Free(wstr);
+#else
+    PyObject *bytes = PyUnicode_EncodeLocale(label, NULL);
+    if (bytes == NULL) {
+        return NULL;
+    }
+    rtn = slk_set(labnum, PyBytes_AS_STRING(bytes), justify);
+    Py_DECREF(bytes);
+#endif
+    return curses_check_err(module, rtn, "slk_set", NULL);
+}
+
+/*[clinic input]
+_curses.slk_label
+
+    labnum: int
+        The label number.
+    /
+
+Return the current text of a soft label.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_label_impl(PyObject *module, int labnum)
+/*[clinic end generated code: output=4f4945ceaa0db758 input=ad9c26a136555ea0]*/
+{
+    PyCursesStatefulInitialised(module);
+    char *label = slk_label(labnum);
+    if (label == NULL) {
+        return Py_GetConstant(Py_CONSTANT_EMPTY_STR);
+    }
+    return PyUnicode_DecodeLocale(label, NULL);
+}
+
+/*[clinic input]
+_curses.slk_refresh
+
+Update the soft labels on the screen.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_refresh_impl(PyObject *module)
+/*[clinic end generated code: output=93183b9300e29cfe input=c668ee5b14ecb802]*/
+NoArgNoReturnFunctionBody(slk_refresh)
+
+/*[clinic input]
+_curses.slk_noutrefresh
+
+Update the soft labels on the virtual screen only.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_noutrefresh_impl(PyObject *module)
+/*[clinic end generated code: output=043d1d0021331e48 input=cabc0f5e37aac369]*/
+NoArgNoReturnFunctionBody(slk_noutrefresh)
+
+/*[clinic input]
+_curses.slk_clear
+
+Erase the soft labels from the screen.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_clear_impl(PyObject *module)
+/*[clinic end generated code: output=acf24fa9b130c8c6 input=38644dc752e4372b]*/
+NoArgNoReturnFunctionBody(slk_clear)
+
+/*[clinic input]
+_curses.slk_restore
+
+Restore the soft labels after a preceding slk_clear().
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_restore_impl(PyObject *module)
+/*[clinic end generated code: output=fe9a518a013a00de input=97346ac473b0f9d7]*/
+NoArgNoReturnFunctionBody(slk_restore)
+
+/*[clinic input]
+_curses.slk_touch
+
+Force the soft labels to be redrawn by the next slk_refresh().
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_touch_impl(PyObject *module)
+/*[clinic end generated code: output=6135e95a69687969 input=ff45098b9d8c9417]*/
+NoArgNoReturnFunctionBody(slk_touch)
+
+/*[clinic input]
+_curses.slk_attron
+
+    attr: long
+    /
+
+Add the given chtype attributes to the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attron_impl(PyObject *module, long attr)
+/*[clinic end generated code: output=01aa29848a58ab50 input=fa198a604e3eec04]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_attron((chtype)attr),
+                            "slk_attron", NULL);
+}
+
+/*[clinic input]
+_curses.slk_attroff
+
+    attr: long
+    /
+
+Remove the given chtype attributes from the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attroff_impl(PyObject *module, long attr)
+/*[clinic end generated code: output=7b172cc37a17811f input=21dab55d43d30b8f]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_attroff((chtype)attr),
+                            "slk_attroff", NULL);
+}
+
+/*[clinic input]
+_curses.slk_attrset
+
+    attr: long
+    /
+
+Set the chtype attributes of the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attrset_impl(PyObject *module, long attr)
+/*[clinic end generated code: output=1139e2b0f757edfd input=d5c798956a5f046a]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_attrset((chtype)attr),
+                            "slk_attrset", NULL);
+}
+
+#ifdef NCURSES_EXT_FUNCS
+/*[clinic input]
+_curses.slk_attr
+
+Return the current chtype attributes of the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attr_impl(PyObject *module)
+/*[clinic end generated code: output=6d47752f82bdc29f input=be38805fdec52149]*/
+{
+    PyCursesStatefulInitialised(module);
+    return PyLong_FromUnsignedLong((unsigned long)slk_attr());
+}
+#endif
+
+/*[clinic input]
+_curses.slk_attr_on
+
+    attr: attr
+    /
+
+Turn on attributes of the soft labels without affecting others.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attr_on_impl(PyObject *module, attr_t attr)
+/*[clinic end generated code: output=32419d75e53e01c1 input=1087c3c4ecf21080]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_attr_on(attr, NULL),
+                            "slk_attr_on", NULL);
+}
+
+/*[clinic input]
+_curses.slk_attr_off
+
+    attr: attr
+    /
+
+Turn off attributes of the soft labels without affecting others.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attr_off_impl(PyObject *module, attr_t attr)
+/*[clinic end generated code: output=28c6235ac6bc923c input=02b472ca7c772a66]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_attr_off(attr, NULL),
+                            "slk_attr_off", NULL);
+}
+
+/*[clinic input]
+_curses.slk_attr_set
+
+    attr: attr
+    pair: pair = 0
+    /
+
+Set the attributes and color pair of the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_attr_set_impl(PyObject *module, attr_t attr, int pair)
+/*[clinic end generated code: output=b93f23465e232597 input=4502a201917e4bf4]*/
+{
+    PyCursesStatefulInitialised(module);
+    int rtn;
+#if _NCURSES_EXTENDED_COLOR_FUNCS
+    rtn = slk_attr_set(attr, 0, &pair);
+#else
+    rtn = slk_attr_set(attr, (short)pair, NULL);
+#endif
+    return curses_check_err(module, rtn, "slk_attr_set", NULL);
+}
+
+/*[clinic input]
+_curses.slk_color
+
+    pair: pair
+    /
+
+Set the color pair of the soft labels.
+[clinic start generated code]*/
+
+static PyObject *
+_curses_slk_color_impl(PyObject *module, int pair)
+/*[clinic end generated code: output=ffe4de805f9c65f5 input=b1e691a9cc6177ee]*/
+{
+    PyCursesStatefulInitialised(module);
+    return curses_check_err(module, slk_color((short)pair), "slk_color", NULL);
+}
+
 #ifdef HAVE_CURSES_USE_ENV
 /*[clinic input]
 _curses.use_env
@@ -8301,15 +8616,29 @@ static PyMethodDef cursesmodule_methods[] = {
     _CURSES_SCR_INIT_METHODDEF
     _CURSES_SCR_RESTORE_METHODDEF
     _CURSES_SCR_SET_METHODDEF
-#if defined(NCURSES_EXT_FUNCS) && NCURSES_EXT_FUNCS >= 20081102
     _CURSES_GET_ESCDELAY_METHODDEF
     _CURSES_SET_ESCDELAY_METHODDEF
-#endif
     _CURSES_GET_TABSIZE_METHODDEF
     _CURSES_SET_TABSIZE_METHODDEF
     _CURSES_SET_TERM_METHODDEF
     _CURSES_SETSYX_METHODDEF
     _CURSES_SETUPTERM_METHODDEF
+    _CURSES_SLK_INIT_METHODDEF
+    _CURSES_SLK_SET_METHODDEF
+    _CURSES_SLK_LABEL_METHODDEF
+    _CURSES_SLK_REFRESH_METHODDEF
+    _CURSES_SLK_NOUTREFRESH_METHODDEF
+    _CURSES_SLK_CLEAR_METHODDEF
+    _CURSES_SLK_RESTORE_METHODDEF
+    _CURSES_SLK_TOUCH_METHODDEF
+    _CURSES_SLK_ATTRON_METHODDEF
+    _CURSES_SLK_ATTROFF_METHODDEF
+    _CURSES_SLK_ATTRSET_METHODDEF
+    _CURSES_SLK_ATTR_METHODDEF
+    _CURSES_SLK_ATTR_ON_METHODDEF
+    _CURSES_SLK_ATTR_OFF_METHODDEF
+    _CURSES_SLK_ATTR_SET_METHODDEF
+    _CURSES_SLK_COLOR_METHODDEF
     _CURSES_START_COLOR_METHODDEF
     _CURSES_TERMATTRS_METHODDEF
     _CURSES_TERM_ATTRS_METHODDEF
