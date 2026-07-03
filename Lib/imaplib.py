@@ -253,9 +253,13 @@ class IMAP4:
         elif 'OK' in self.untagged_responses:
             self.state = 'NONAUTH'
         else:
-            raise self.error(self.welcome)
+            # A continuation ('+') greeting is returned as None; report its
+            # raw line, still held by the last match (gh-108280).
+            greeting = (self.welcome or self.mo.string).decode(
+                self._encoding, 'replace')
+            raise self.error('invalid greeting: ' + greeting)
 
-        self._get_capabilities()
+        self._refresh_capabilities()
         if __debug__:
             if self.debug >= 3:
                 self._mesg('CAPABILITIES: %r' % (self.capabilities,))
@@ -533,6 +537,7 @@ class IMAP4:
         if typ != 'OK':
             raise self.error(dat[-1].decode('utf-8', 'replace'))
         self.state = 'AUTH'
+        self._refresh_capabilities()
         return typ, dat
 
 
@@ -714,6 +719,7 @@ class IMAP4:
         if typ != 'OK':
             raise self.error(dat[-1].decode('UTF-8', 'replace'))
         self.state = 'AUTH'
+        self._refresh_capabilities()
         return typ, dat
 
 
@@ -1201,6 +1207,15 @@ class IMAP4:
         self.capabilities = tuple(dat.split())
 
 
+    def _refresh_capabilities(self):
+        # Use a CAPABILITY response sent by the server, or ask for it.
+        if 'CAPABILITY' in self.untagged_responses:
+            dat = self.untagged_responses.pop('CAPABILITY')[-1]
+            self.capabilities = tuple(str(dat, self._encoding).upper().split())
+        else:
+            self._get_capabilities()
+
+
     def _get_response(self, start_timeout=False):
 
         # Read response and store.
@@ -1279,6 +1294,10 @@ class IMAP4:
                 # Read trailer - possibly containing another literal
 
                 dat = self._get_line()
+
+                # Skip a blank line that some servers send after a literal.
+                if dat == b'':
+                    dat = self._get_line()
 
             self._append_untagged(typ, dat)
 
@@ -1844,9 +1863,8 @@ def Time2Internaldate(date_time):
         dt = datetime.fromtimestamp(date_time,
                                     timezone.utc).astimezone()
     elif isinstance(date_time, tuple):
-        try:
-            gmtoff = date_time.tm_gmtoff
-        except AttributeError:
+        gmtoff = getattr(date_time, "tm_gmtoff", None)
+        if gmtoff is None:
             if time.daylight:
                 dst = date_time[8]
                 if dst == -1:
