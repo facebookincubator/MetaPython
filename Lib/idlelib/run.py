@@ -25,6 +25,7 @@ from idlelib import debugobj_r  # remote_object_tree_item
 from idlelib import iomenu  # encoding
 from idlelib import rpc  # multiple objects
 from idlelib import stackviewer  # StackTreeItem
+from idlelib import util  # fix_scaling
 import __main__
 
 # Lazy Imports Incompatibility: The following modules must be imported eagerly
@@ -222,7 +223,7 @@ def show_socket_error(err, address):
     import tkinter
     from tkinter.messagebox import showerror
     root = tkinter.Tk()
-    fix_scaling(root)
+    util.fix_scaling(root)
     root.withdraw()
     showerror(
             "Subprocess Connection Error",
@@ -332,16 +333,6 @@ def exit():
     sys.exit(0)
 
 
-def fix_scaling(root):
-    """Scale fonts on HiDPI displays."""
-    import tkinter.font
-    scaling = float(root.tk.call('tk', 'scaling'))
-    if scaling > 1.4:
-        for name in tkinter.font.names(root):
-            font = tkinter.font.Font(root=root, name=name, exists=True)
-            size = int(font['size'])
-            if size < 0:
-                font['size'] = round(-0.75*size)
 
 
 def fixdoc(fun, text):
