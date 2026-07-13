@@ -3,7 +3,7 @@
 Tkinter provides classes which allow the display, positioning and
 control of widgets. Toplevel widgets are Tk and Toplevel. Other
 widgets are Frame, Label, Entry, Text, Canvas, Button, Radiobutton,
-Checkbutton, Scale, Listbox, Scrollbar, OptionMenu, Spinbox
+Checkbutton, Scale, Listbox, Scrollbar, OptionMenu, Spinbox,
 LabelFrame and PanedWindow.
 
 Properties of the widgets are specified with keyword arguments.
@@ -2436,7 +2436,7 @@ class Wm:
 
     def wm_iconposition(self, x=None, y=None):
         """Set the position of the icon of this widget to X and Y. Return
-        a tuple of the current values of X and X if None is given."""
+        a tuple of the current values of X and Y if None is given."""
         return self._getints(self.tk.call(
             'wm', 'iconposition', self._w, x, y))
 
@@ -2639,11 +2639,13 @@ class Tk(Misc, Wm):
         if os.path.isfile(class_tcl):
             self.tk.call('source', class_tcl)
         if os.path.isfile(class_py):
-            exec(open(class_py).read(), dir)
+            with open(class_py, 'rb') as f:
+                exec(f.read(), dir)
         if os.path.isfile(base_tcl):
             self.tk.call('source', base_tcl)
         if os.path.isfile(base_py):
-            exec(open(base_py).read(), dir)
+            with open(base_py, 'rb') as f:
+                exec(f.read(), dir)
 
     def report_callback_exception(self, exc, val, tb):
         """Report callback exception on sys.stderr.

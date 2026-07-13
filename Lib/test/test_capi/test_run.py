@@ -310,15 +310,14 @@ class CAPITest(unittest.TestCase):
             # supported". In this case, run the test without redirecting
             # stderr to a temporary file.
             self._check_run_interactive(run, encode_filename, use_loop)
-        else:
+            return
+
+        with tempfile.TemporaryFile() as tmp:
             try:
-                with tempfile.TemporaryFile() as tmp:
-                    try:
-                        os.dup2(tmp.fileno(), STDERR_FD)
-                        self._check_run_interactive(run, encode_filename, use_loop)
-                    finally:
-                        os.dup2(stderr_copy, STDERR_FD)
+                os.dup2(tmp.fileno(), STDERR_FD)
+                self._check_run_interactive(run, encode_filename, use_loop)
             finally:
+                os.dup2(stderr_copy, STDERR_FD)
                 os.close(stderr_copy)
 
     def test_run_interactiveone(self):
