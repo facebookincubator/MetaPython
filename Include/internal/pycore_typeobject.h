@@ -32,7 +32,11 @@ struct type_cache_entry {
     PyObject *value;       // borrowed reference or NULL
 };
 
+#if defined(__aarch64__)
+#define MCACHE_SIZE_EXP 14
+#else
 #define MCACHE_SIZE_EXP 12
+#endif
 
 struct type_cache {
     struct type_cache_entry hashtable[1 << MCACHE_SIZE_EXP];
