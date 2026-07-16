@@ -1574,6 +1574,8 @@ clear_gen_frame(PyThreadState *tstate, _PyInterpreterFrame * frame)
     _PyFrame_ClearExceptCode(frame);
     tstate->c_recursion_remaining++;
     frame->previous = NULL;
+    /* Inlined SEND bypasses gen_send_ex2(), so clear the awaiter here. */
+    Py_CLEAR(gen->gi_ci_awaiter);
 }
 
 static void

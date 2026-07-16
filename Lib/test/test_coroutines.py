@@ -2488,10 +2488,27 @@ class CoroutineAwaiterTest(unittest.TestCase):
         async def awaiter():
             return await coro_obj
 
-        coro_obj = coro()
-        awaiter_obj = awaiter()
+        # The second execution specializes SEND to SEND_GEN.
+        for _ in range(2):
+            coro_obj = coro()
+            awaiter_obj = awaiter()
+            self.assertIsNone(coro_obj.cr_awaiter)
+            self.assertEqual(run_async(awaiter_obj), ([], "success"))
         self.assertIsNone(coro_obj.cr_awaiter)
-        self.assertEqual(run_async(awaiter_obj), ([], "success"))
+
+    def test_awaiter_cleared_after_exception(self):
+        async def coro():
+            raise RuntimeError("boom")
+
+        async def awaiter():
+            await coro_obj
+
+        for _ in range(2):
+            coro_obj = coro()
+            awaiter_obj = awaiter()
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                run_async(awaiter_obj)
+        self.assertIsNone(coro_obj.cr_awaiter)
 
     class FakeFuture:
         def __await__(self):
