@@ -12,6 +12,11 @@
 
 #include <stdlib.h>               // malloc()
 #include <stdbool.h>
+#ifdef __linux__
+#  include <malloc.h>             // malloc_usable_size()
+#elif defined(__APPLE__)
+#  include <malloc/malloc.h>      // malloc_size()
+#endif
 #ifdef WITH_MIMALLOC
 // Forward declarations of functions used in our mimalloc modifications
 static void _PyMem_mi_page_clear_qsbr(mi_page_t *page);
@@ -38,6 +43,36 @@ extern void _PyMem_DumpTraceback(int fd, const void *ptr);
 static void _PyObject_DebugDumpAddress(const void *p);
 static void _PyMem_DebugCheckAddress(const char *func, char api_id, const void *p);
 
+static inline size_t
+raw_malloc_size(void *p)
+{
+    if (p != NULL) {
+#ifdef MS_WINDOWS
+        return _msize(p);
+#elif defined(__linux__)
+        return malloc_usable_size(p);
+#elif defined(__APPLE__)
+        return malloc_size(p);
+#endif
+    }
+    return 0;
+}
+
+static uint64_t raw_allocated_bytes;
+
+/* Relaxed atomic add for raw_allocated_bytes: pyatomic has no relaxed add,
+   so avoid a barrier on this allocation hot path by using the compiler
+   builtin directly.  MSVC falls back to seq_cst, identical to relaxed on x86. */
+static inline void
+raw_atomic_add_relaxed(uint64_t *obj, uint64_t value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    (void)__atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
+#else
+    (void)_Py_atomic_add_uint64(obj, value);  // seq_cst; same as relaxed on x86
+#endif
+}
+
 
 static void set_up_debug_hooks_domain_unlocked(PyMemAllocatorDomain domain);
 static void set_up_debug_hooks_unlocked(void);
@@ -60,7 +95,11 @@ _PyMem_RawMalloc(void *Py_UNUSED(ctx), size_t size)
        To solve these problems, allocate an extra byte. */
     if (size == 0)
         size = 1;
-    return malloc(size);
+    void *ptr = malloc(size);
+    if (ptr != NULL) {
+        raw_atomic_add_relaxed(&raw_allocated_bytes, raw_malloc_size(ptr));
+    }
+    return ptr;
 }
 
 void *
@@ -74,7 +113,11 @@ _PyMem_RawCalloc(void *Py_UNUSED(ctx), size_t nelem, size_t elsize)
         nelem = 1;
         elsize = 1;
     }
-    return calloc(nelem, elsize);
+    void *ptr = calloc(nelem, elsize);
+    if (ptr != NULL) {
+        raw_atomic_add_relaxed(&raw_allocated_bytes, raw_malloc_size(ptr));
+    }
+    return ptr;
 }
 
 void *
@@ -82,13 +125,21 @@ _PyMem_RawRealloc(void *Py_UNUSED(ctx), void *ptr, size_t size)
 {
     if (size == 0)
         size = 1;
-    return realloc(ptr, size);
+    size_t oldsize = raw_malloc_size(ptr);
+    ptr = realloc(ptr, size);
+    if (ptr != NULL) {
+        raw_atomic_add_relaxed(&raw_allocated_bytes, raw_malloc_size(ptr));
+        raw_atomic_add_relaxed(&raw_allocated_bytes, 0 - (uint64_t)oldsize);
+    }
+    return ptr;
 }
 
 void
 _PyMem_RawFree(void *Py_UNUSED(ctx), void *ptr)
 {
+    size_t size = raw_malloc_size(ptr);
     free(ptr);
+    raw_atomic_add_relaxed(&raw_allocated_bytes, 0 - (uint64_t)size);
 }
 
 #ifdef WITH_MIMALLOC
@@ -1592,6 +1643,14 @@ static bool count_blocks(
     return 1;
 }
 
+static bool count_bytes(
+    const mi_heap_t* heap, const mi_heap_area_t* area,
+    void* block, size_t block_size, void* allocated_bytes)
+{
+    *(size_t *)allocated_bytes += area->used * block_size;
+    return 1;
+}
+
 static Py_ssize_t
 get_mimalloc_allocated_blocks(PyInterpreterState *interp)
 {
@@ -1616,6 +1675,32 @@ get_mimalloc_allocated_blocks(PyInterpreterState *interp)
     mi_heap_visit_blocks(heap, false, &count_blocks, &allocated_blocks);
 #endif
     return allocated_blocks;
+}
+
+static Py_ssize_t
+get_mimalloc_allocated_bytes(PyInterpreterState *interp)
+{
+    size_t allocated_bytes = 0;
+#ifdef Py_GIL_DISABLED
+    _Py_FOR_EACH_TSTATE_UNLOCKED(interp, t) {
+        _PyThreadStateImpl *tstate = (_PyThreadStateImpl *)t;
+        for (int i = 0; i < _Py_MIMALLOC_HEAP_COUNT; i++) {
+            mi_heap_t *heap = &tstate->mimalloc.heaps[i];
+            mi_heap_visit_blocks(heap, false, &count_bytes, &allocated_bytes);
+        }
+    }
+
+    mi_abandoned_pool_t *pool = &interp->mimalloc.abandoned_pool;
+    for (uint8_t tag = 0; tag < _Py_MIMALLOC_HEAP_COUNT; tag++) {
+        _mi_abandoned_pool_visit_blocks(pool, tag, false, &count_bytes,
+                                        &allocated_bytes);
+    }
+#else
+    // Same limitation as get_mimalloc_allocated_blocks: only counts the current thread's bytes.
+    mi_heap_t *heap = mi_heap_get_default();
+    mi_heap_visit_blocks(heap, false, &count_bytes, &allocated_bytes);
+#endif
+    return allocated_bytes;
 }
 #endif
 
@@ -1657,6 +1742,49 @@ _PyInterpreterState_GetAllocatedBlocks(PyInterpreterState *interp)
         for (; base < (uintptr_t) allarenas[i].pool_address; base += POOL_SIZE) {
             poolp p = (poolp)base;
             n += p->ref.count;
+        }
+    }
+    return n;
+}
+
+Py_ssize_t
+_PyInterpreterState_GetAllocatedBytes(PyInterpreterState *interp)
+{
+#ifdef WITH_MIMALLOC
+    if (_PyMem_MimallocEnabled()) {
+        return get_mimalloc_allocated_bytes(interp);
+    }
+#endif
+
+#ifdef Py_DEBUG
+    assert(has_own_state(interp));
+#else
+    if (!has_own_state(interp)) {
+        _Py_FatalErrorFunc(__func__,
+                           "the interpreter doesn't have its own allocator");
+    }
+#endif
+    OMState *state = interp->obmalloc;
+
+    if (state == NULL) {
+        return 0;
+    }
+
+    Py_ssize_t n = 0;
+    /* add up allocated bytes for used pools */
+    for (uint i = 0; i < maxarenas; ++i) {
+        /* Skip arenas which are not allocated. */
+        if (allarenas[i].address == 0) {
+            continue;
+        }
+
+        uintptr_t base = (uintptr_t)_Py_ALIGN_UP(allarenas[i].address, POOL_SIZE);
+
+        /* visit every pool in the arena */
+        assert(base <= (uintptr_t) allarenas[i].pool_address);
+        for (; base < (uintptr_t) allarenas[i].pool_address; base += POOL_SIZE) {
+            poolp p = (poolp)base;
+            n += (p->ref.count * INDEX2SIZE(p->szidx));
         }
     }
     return n;
@@ -1761,6 +1889,61 @@ Py_ssize_t
 _Py_GetGlobalAllocatedBlocks(void)
 {
     return get_num_global_allocated_blocks(&_PyRuntime);
+}
+
+static Py_ssize_t
+get_global_allocated_bytes(_PyRuntimeState *runtime)
+{
+    Py_ssize_t total = (Py_ssize_t)_Py_atomic_load_uint64_relaxed(&raw_allocated_bytes);
+    if (_PyRuntimeState_GetFinalizing(runtime) != NULL) {
+        PyInterpreterState *interp = _PyInterpreterState_Main();
+        if (interp == NULL) {
+            /* We are at the very end of runtime finalization.
+               We can't rely on finalizing->interp since that thread
+               state is probably already freed, so we don't worry
+               about it. */
+            assert(PyInterpreterState_Head() == NULL);
+        }
+        else {
+            assert(interp != NULL);
+            /* It is probably the last interpreter but not necessarily. */
+            assert(PyInterpreterState_Next(interp) == NULL);
+            total += _PyInterpreterState_GetAllocatedBytes(interp);
+        }
+    }
+    else {
+        _PyEval_StopTheWorldAll(&_PyRuntime);
+        HEAD_LOCK(runtime);
+        PyInterpreterState *interp = PyInterpreterState_Head();
+        assert(interp != NULL);
+#ifdef Py_DEBUG
+        int got_main = 0;
+#endif
+        for (; interp != NULL; interp = PyInterpreterState_Next(interp)) {
+#ifdef Py_DEBUG
+            if (_Py_IsMainInterpreter(interp)) {
+                assert(!got_main);
+                got_main = 1;
+                assert(has_own_state(interp));
+            }
+#endif
+            if (has_own_state(interp)) {
+                total += _PyInterpreterState_GetAllocatedBytes(interp);
+            }
+        }
+        HEAD_UNLOCK(runtime);
+        _PyEval_StartTheWorldAll(&_PyRuntime);
+#ifdef Py_DEBUG
+        assert(got_main);
+#endif
+    }
+    return total;
+}
+
+Py_ssize_t
+_Py_GetGlobalAllocatedBytes(void)
+{
+    return get_global_allocated_bytes(&_PyRuntime);
 }
 
 #if WITH_PYMALLOC_RADIX_TREE
@@ -2728,6 +2911,18 @@ Py_ssize_t
 _Py_GetGlobalAllocatedBlocks(void)
 {
     return 0;
+}
+
+Py_ssize_t
+_PyInterpreterState_GetAllocatedBytes(PyInterpreterState *Py_UNUSED(interp))
+{
+    return 0;
+}
+
+Py_ssize_t
+_Py_GetGlobalAllocatedBytes(void)
+{
+    return (Py_ssize_t)_Py_atomic_load_uint64_relaxed(&raw_allocated_bytes);
 }
 
 void
