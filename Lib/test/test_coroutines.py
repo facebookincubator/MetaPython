@@ -7,6 +7,7 @@ import types
 import traceback
 import unittest
 import warnings
+import weakref
 from test import support
 from test.support import import_helper
 from test.support import warnings_helper
@@ -2509,6 +2510,30 @@ class CoroutineAwaiterTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "boom"):
                 run_async(awaiter_obj)
         self.assertIsNone(coro_obj.cr_awaiter)
+
+    def test_exception_state_cleared_after_completion(self):
+        from _testcapi import set_exc_info
+
+        class MarkerError(Exception):
+            pass
+
+        async def coro(error):
+            set_exc_info(type(error), error, None)
+
+        async def awaiter():
+            return await coro_obj
+
+        # The second execution specializes SEND to SEND_GEN.
+        for _ in range(2):
+            error = MarkerError()
+            error_ref = weakref.ref(error)
+            coro_obj = coro(error)
+            self.assertEqual(run_async(awaiter()), ([], None))
+
+            del error
+            support.gc_collect()
+            self.assertIsNone(coro_obj.cr_frame)
+            self.assertIsNone(error_ref())
 
     class FakeFuture:
         def __await__(self):
