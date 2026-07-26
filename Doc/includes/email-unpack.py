@@ -35,8 +35,6 @@ Unpack a MIME message into a directory of files.
         # multipart/* are just containers
         if part.get_content_maintype() == 'multipart':
             continue
-        # Applications should really sanitize the given filename so that an
-        # email message can't be used to overwrite important files
         filename = part.get_filename()
         if not filename:
             ext = mimetypes.guess_extension(part.get_content_type())
@@ -44,6 +42,8 @@ Unpack a MIME message into a directory of files.
                 # Use a generic bag-of-bits extension
                 ext = '.bin'
             filename = f'part-{counter:03d}{ext}'
+        else:
+            filename = os.path.basename(filename)
         counter += 1
         with open(os.path.join(args.directory, filename), 'wb') as fp:
             fp.write(part.get_payload(decode=True))
