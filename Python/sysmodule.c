@@ -2065,7 +2065,7 @@ Return the number of memory bytes currently allocated.
 
 static Py_ssize_t
 sys_getallocatedbytes_impl(PyObject *module)
-/*[clinic end generated code: output=a340d143783a5d72 input=7c169a544662d3e2]*/
+/*[clinic end generated code: output=0a3da1951d3cde0d input=9dd91dc935be81e9]*/
 {
     // It might make sense to return the bytes
     // for just the current interpreter.
