@@ -2057,6 +2057,8 @@ sys_getallocatedblocks_impl(PyObject *module)
     return _Py_GetGlobalAllocatedBlocks();
 }
 
+// getallocatedbytes currently only works on Windows, Linux and Apple.
+#if defined(MS_WINDOWS) || defined(__linux__) || defined(__APPLE__)
 /*[clinic input]
 sys.getallocatedbytes -> Py_ssize_t
 
@@ -2071,6 +2073,7 @@ sys_getallocatedbytes_impl(PyObject *module)
     // for just the current interpreter.
     return _Py_GetGlobalAllocatedBytes();
 }
+#endif
 
 /*[clinic input]
 sys.getunicodeinternedsize -> Py_ssize_t
@@ -2854,7 +2857,10 @@ static PyMethodDef sys_methods[] = {
     SYS_GETDEFAULTENCODING_METHODDEF
     SYS_GETDLOPENFLAGS_METHODDEF
     SYS_GETALLOCATEDBLOCKS_METHODDEF
+// getallocatedbytes currently only works on Windows, Linux and Apple.
+#if defined(MS_WINDOWS) || defined(__linux__) || defined(__APPLE__)
     SYS_GETALLOCATEDBYTES_METHODDEF
+#endif
     SYS_GETUNICODEINTERNEDSIZE_METHODDEF
     SYS_GETFILESYSTEMENCODING_METHODDEF
     SYS_GETFILESYSTEMENCODEERRORS_METHODDEF
