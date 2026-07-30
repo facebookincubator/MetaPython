@@ -1055,6 +1055,8 @@ exit:
     return return_value;
 }
 
+#if (defined(MS_WINDOWS) || defined(__linux__) || defined(__APPLE__))
+
 PyDoc_STRVAR(sys_getallocatedbytes__doc__,
 "getallocatedbytes($module, /)\n"
 "--\n"
@@ -1082,6 +1084,8 @@ sys_getallocatedbytes(PyObject *module, PyObject *Py_UNUSED(ignored))
 exit:
     return return_value;
 }
+
+#endif /* (defined(MS_WINDOWS) || defined(__linux__) || defined(__APPLE__)) */
 
 PyDoc_STRVAR(sys_getunicodeinternedsize__doc__,
 "getunicodeinternedsize($module, /, *, _only_immortal=False)\n"
@@ -1989,6 +1993,10 @@ exit:
     #define SYS_GETTOTALREFCOUNT_METHODDEF
 #endif /* !defined(SYS_GETTOTALREFCOUNT_METHODDEF) */
 
+#ifndef SYS_GETALLOCATEDBYTES_METHODDEF
+    #define SYS_GETALLOCATEDBYTES_METHODDEF
+#endif /* !defined(SYS_GETALLOCATEDBYTES_METHODDEF) */
+
 #ifndef SYS__STATS_ON_METHODDEF
     #define SYS__STATS_ON_METHODDEF
 #endif /* !defined(SYS__STATS_ON_METHODDEF) */
@@ -2008,4 +2016,4 @@ exit:
 #ifndef SYS_GETANDROIDAPILEVEL_METHODDEF
     #define SYS_GETANDROIDAPILEVEL_METHODDEF
 #endif /* !defined(SYS_GETANDROIDAPILEVEL_METHODDEF) */
-/*[clinic end generated code: output=4827812ffb9ed3ab input=a9049054013a1b77]*/
+/*[clinic end generated code: output=b3f43455b2b76719 input=a9049054013a1b77]*/
