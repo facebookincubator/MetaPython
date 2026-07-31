@@ -1263,10 +1263,16 @@ os.does_not_exist
 
     def test_create_builtin(self):
         for internal_mod in (sys, builtins):
+            # _imp.create_builtin will nuke things like __loader__ and
+            # __package__, which are addded by importlib._bootstrap. Instead
+            # of trying to re-add them, just restore the old module
+            # contents if create_builtin returns the same module object.
+            mod_dict = internal_mod.__dict__.copy()
             class Spec:
                 name = internal_mod.__name__
 
             self.assertIs(_imp.create_builtin(Spec()), internal_mod)
+            internal_mod.__dict__.update(mod_dict)
 
         class Spec:
             name = "nonexistent_lib"
