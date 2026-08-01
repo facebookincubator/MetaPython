@@ -1092,7 +1092,7 @@ def main():
     # is missing then we weren't build with CinderX so ignoring the import
     # error is fine.
     try:
-        import init_cinderx
+        import init_cinderx  # noqa: F401
     except ImportError:
         pass
     execsitecustomize()
