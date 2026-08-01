@@ -2253,6 +2253,13 @@ _Ci_PyGC_GetImpl(GCState *gc_state)
 
 static void
 _Ci_PyGCImpl_Fini(GCState *gc_state)
+#if defined(__has_feature)
+#  if __has_feature(undefined_behavior_sanitizer)
+        // Silence the UBSan warning about calling PyMem_RawFree through an
+        // incorrect pointer type.
+        __attribute__((no_sanitize("function")))
+#  endif
+#endif
 {
     _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
     assert(node != NULL);
