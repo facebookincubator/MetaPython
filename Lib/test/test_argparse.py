@@ -7075,16 +7075,6 @@ class TestProgName(TestCase):
         parser.parse_args()
     ''')
 
-    source_with_module_spec = textwrap.dedent('''\
-        import argparse
-        import importlib.machinery
-        import sys
-        sys.modules['__main__'].__spec__ = importlib.machinery.ModuleSpec(
-            'package.module', loader=None)
-        parser = argparse.ArgumentParser()
-        parser.parse_args()
-    ''')
-
     def setUp(self):
         self.dirname = 'package' + os_helper.FS_NONASCII
         self.addCleanup(os_helper.rmtree, self.dirname)
@@ -7116,12 +7106,6 @@ class TestProgName(TestCase):
 
     def test_script_compiled(self):
         self.test_script(compiled=True)
-
-    def test_script_with_module_spec(self):
-        basename = os_helper.TESTFN
-        script_name = script_helper.make_script(
-            self.dirname, basename, self.source_with_module_spec)
-        self.check_usage(os.path.basename(script_name), script_name)
 
     def test_directory(self, compiled=False):
         dirname = os.path.join(self.dirname, os_helper.TESTFN)

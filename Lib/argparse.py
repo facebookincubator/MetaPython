@@ -1836,11 +1836,6 @@ def _prog_name(prog=None):
     if modspec.name != '__main__':
         # imported module or package
         modname = modspec.name.removesuffix('.__main__')
-        if not any(
-            flag == '-m' and name in (modspec.name, modname)
-            for flag, name in zip(_sys.orig_argv, _sys.orig_argv[1:])
-        ):
-            return _os.path.basename(arg0)
         return f'{py} -m {modname}'
     # directory or ZIP file
     return f'{py} {arg0}'
