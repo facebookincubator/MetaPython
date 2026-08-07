@@ -49,7 +49,7 @@ extern PyObject* _PyRun_SimpleString(
      || defined(_Py_ADDRESS_SANITIZER) \
      || defined(_Py_THREAD_SANITIZER)) \
      || defined(_Py_UNDEFINED_BEHAVIOR_SANITIZER)
-#  define _PyOS_LOG2_STACK_MARGIN 12
+#  define _PyOS_LOG2_STACK_MARGIN 13
 #else
 #  define _PyOS_LOG2_STACK_MARGIN 11
 #endif
