@@ -769,6 +769,21 @@ static int function_kind(PyCodeObject *code);
 static bool function_check_args(PyObject *o, int expected_argcount, int opcode);
 static uint32_t function_get_version(PyObject *o, int opcode);
 
+#ifdef Py_GIL_DISABLED
+static void
+maybe_enable_deferred_ref_count(PyObject *op)
+{
+    if (!_Py_IsOwnedByCurrentThread(op) && _PyObject_GC_IS_TRACKED(op)) {
+        // For module level variables that are heavily used from multiple
+        // threads, deferred reference counting provides good scaling
+        // benefits.  The downside is that the object will only be deallocated
+        // by a GC run.
+        PyUnstable_Object_EnableDeferredRefcount(op);
+    }
+}
+#endif
+
+
 static int
 specialize_module_load_attr_lock_held(PyDictObject *dict, _Py_CODEUNIT *instr, PyObject *name)
 {
@@ -807,6 +822,16 @@ specialize_module_load_attr_lock_held(PyDictObject *dict, _Py_CODEUNIT *instr, P
         SPECIALIZATION_FAIL(LOAD_ATTR, SPEC_FAIL_OUT_OF_VERSIONS);
         return -1;
     }
+#ifdef Py_GIL_DISABLED
+    // Upstream reads the value out of `_PyDict_LookupIndexAndValue`, which
+    // 3.14 does not have, so take it from the entry instead. That can be NULL
+    // for a deleted key at a still-valid index, which `_LOAD_ATTR_MODULE`
+    // handles at run time via `DEOPT_IF(attr_o == NULL)`.
+    PyObject *value = DK_UNICODE_ENTRIES(dict->ma_keys)[index].me_value;
+    if (value != NULL) {
+        maybe_enable_deferred_ref_count(value);
+    }
+#endif
     write_u32(cache->version, keys_version);
     cache->index = (uint16_t)index;
     specialize(instr, LOAD_ATTR_MODULE);
@@ -1730,6 +1755,14 @@ specialize_load_global_lock_held(
             SPECIALIZATION_FAIL(LOAD_GLOBAL, SPEC_FAIL_OUT_OF_RANGE);
             goto fail;
         }
+#ifdef Py_GIL_DISABLED
+        // Same as above: no `_PyDict_LookupIndexAndValue` in 3.14, and
+        // `_LOAD_GLOBAL_MODULE` deopts on a NULL entry value itself.
+        PyObject *value = DK_UNICODE_ENTRIES(globals_keys)[index].me_value;
+        if (value != NULL) {
+            maybe_enable_deferred_ref_count(value);
+        }
+#endif
         cache->index = (uint16_t)index;
         cache->module_keys_version = (uint16_t)keys_version;
         specialize(instr, LOAD_GLOBAL_MODULE);
