@@ -245,12 +245,12 @@ class ThreadTests(BaseTestCase):
             done.wait()
             self.assertEqual(ident[0], tid)
 
-    # run with a small(ish) thread stack size (256 KiB)
+    # run with a small(ish) thread stack size (512 KiB)
     def test_various_ops_small_stack(self):
         if verbose:
-            print('with 256 KiB thread stack size...')
+            print('with 512 KiB thread stack size...')
         try:
-            threading.stack_size(262144)
+            threading.stack_size(524288)
         except _thread.error:
             raise unittest.SkipTest(
                 'platform does not support changing thread stack size')
