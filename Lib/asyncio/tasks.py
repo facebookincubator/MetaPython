@@ -1097,6 +1097,18 @@ def _leave_task(loop, task):
     del _current_tasks[loop]
 
 
+def _get_running_task():
+    # The C accelerator keeps the entered task on the thread state, so it can
+    # answer this even after the running-loop marker has been cleared.  This
+    # fallback keys tasks by loop and therefore can only answer for the loop
+    # that is currently marked as running -- which is also why the pure-Python
+    # implementation is not affected by the re-entrancy this is used to detect.
+    loop = events._get_running_loop()
+    if loop is None:
+        return None
+    return _current_tasks.get(loop)
+
+
 def _swap_current_task(loop, task):
     prev_task = _current_tasks.get(loop)
     if task is None:
@@ -1125,12 +1137,13 @@ _py_enter_task = _enter_task
 _py_leave_task = _leave_task
 _py_swap_current_task = _swap_current_task
 _py_all_tasks = all_tasks
+_py_get_running_task = _get_running_task
 
 try:
     from _asyncio import (_register_task, _register_eager_task,
                           _unregister_task, _unregister_eager_task,
                           _enter_task, _leave_task, _swap_current_task,
-                          current_task, all_tasks)
+                          _get_running_task, current_task, all_tasks)
 except ImportError:
     pass
 else:
@@ -1143,3 +1156,4 @@ else:
     _c_leave_task = _leave_task
     _c_swap_current_task = _swap_current_task
     _c_all_tasks = all_tasks
+    _c_get_running_task = _get_running_task

@@ -2243,7 +2243,9 @@ enter_task(PyObject *loop, PyObject *task)
         PyErr_Format(
             PyExc_RuntimeError,
             "Cannot enter into task %R while another " \
-            "task %R is being executed.",
+            "task %R is being executed on this thread. asyncio tracks the " \
+            "current task per thread, so a nested event loop started on " \
+            "this thread cannot step tasks until the outer task is left.",
             task, ts->asyncio_running_task);
         return -1;
     }
@@ -3621,6 +3623,31 @@ _asyncio__get_running_loop_impl(PyObject *module)
 }
 
 /*[clinic input]
+_asyncio._get_running_task
+
+Return the task currently being executed by this thread, or None.
+
+This is a low-level function intended to be used by event loops.  Unlike
+current_task() it does not need a running event loop, so it can be used to
+detect a task that is still entered after the running-loop marker has been
+cleared.  This function is thread-specific.
+
+[clinic start generated code]*/
+
+static PyObject *
+_asyncio__get_running_task_impl(PyObject *module)
+/*[clinic end generated code: output=2aeb24ade7afcb4d input=0a8d93ff1935458d]*/
+{
+    _PyThreadStateImpl *ts = (_PyThreadStateImpl *)_PyThreadState_GET();
+    PyObject *task = Py_XNewRef(ts->asyncio_running_task);
+    if (task == NULL) {
+        /* No task is currently being executed by this thread */
+        Py_RETURN_NONE;
+    }
+    return task;
+}
+
+/*[clinic input]
 _asyncio._set_running_loop
     loop: 'O'
     /
@@ -4348,6 +4375,7 @@ static PyMethodDef asyncio_methods[] = {
     _ASYNCIO_GET_EVENT_LOOP_METHODDEF
     _ASYNCIO_GET_RUNNING_LOOP_METHODDEF
     _ASYNCIO__GET_RUNNING_LOOP_METHODDEF
+    _ASYNCIO__GET_RUNNING_TASK_METHODDEF
     _ASYNCIO__SET_RUNNING_LOOP_METHODDEF
     _ASYNCIO__REGISTER_TASK_METHODDEF
     _ASYNCIO__REGISTER_EAGER_TASK_METHODDEF

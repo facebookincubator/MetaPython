@@ -2126,6 +2126,144 @@ class RunningLoopTests(unittest.TestCase):
             outer_loop.close()
 
 
+@unittest.skipUnless(hasattr(asyncio.tasks, '_c_get_running_task'),
+                     'requires the C _asyncio module')
+class NestedLoopUnderRunningTaskTests(unittest.TestCase):
+    """A nested event loop must not be startable while a task is entered.
+
+    The current task is tracked per thread, so a "sync-over-async" bridge that
+    hides the running loop and spins a fresh loop on the same thread cannot
+    step tasks on it -- every step fails to enter, the nested task stays
+    pending forever and the nested run blocks.  Refuse up front instead.
+    """
+
+    ERROR = 'is being executed on this thread'
+
+    @staticmethod
+    def _hide_running_loop():
+        """The bridge trick: clear the running loop, leave the task entered."""
+        previous = asyncio.events._get_running_loop()
+        asyncio.events._set_running_loop(None)
+        return previous
+
+    def _run_bridge(self, body):
+        """Drive `body` from inside a task, with the running loop hidden."""
+        async def outer():
+            previous = self._hide_running_loop()
+            nested = asyncio.new_event_loop()
+            try:
+                body(nested)
+            finally:
+                nested.close()
+                asyncio.events._set_running_loop(previous)
+
+        asyncio.run(outer())
+
+    def test_run_until_complete_from_running_task(self):
+        async def inner():
+            pass
+
+        # Refusing before ensure_future() leaves the coroutine unconsumed, so
+        # close it to keep the "never awaited" warning out of the test.
+        coro = inner()
+        self.addCleanup(coro.close)
+        with self.assertRaisesRegex(RuntimeError, self.ERROR):
+            self._run_bridge(lambda nested: nested.run_until_complete(coro))
+
+    def test_run_forever_from_running_task(self):
+        with self.assertRaisesRegex(RuntimeError, self.ERROR):
+            self._run_bridge(lambda nested: nested.run_forever())
+
+    def test_run_until_complete_of_future_from_running_task(self):
+        # No task is ever stepped on the nested loop, so nothing would report
+        # the problem: this used to block with no output at all.
+        def body(nested):
+            nested.run_until_complete(nested.create_future())
+
+        with self.assertRaisesRegex(RuntimeError, self.ERROR):
+            self._run_bridge(body)
+
+    def test_error_names_the_entered_task(self):
+        async def outer():
+            name = asyncio.current_task().get_name()
+            previous = self._hide_running_loop()
+            nested = asyncio.new_event_loop()
+            try:
+                with self.assertRaises(RuntimeError) as cm:
+                    nested.run_forever()
+            finally:
+                nested.close()
+                asyncio.events._set_running_loop(previous)
+            self.assertIn(name, str(cm.exception))
+
+        asyncio.run(outer())
+
+    def test_nested_loop_allowed_after_leaving_the_task(self):
+        # Leaving the outer task first is the supported way to bridge; it must
+        # keep working.
+        results = []
+
+        async def inner():
+            return 'inner'
+
+        async def outer():
+            loop = asyncio.events._get_running_loop()
+            task = asyncio.current_task()
+            asyncio._leave_task(loop, task)
+            asyncio.events._set_running_loop(None)
+            nested = asyncio.new_event_loop()
+            try:
+                results.append(nested.run_until_complete(inner()))
+            finally:
+                nested.close()
+                asyncio.events._set_running_loop(loop)
+                asyncio._enter_task(loop, task)
+
+        asyncio.run(outer())
+        self.assertEqual(results, ['inner'])
+
+    def test_nested_loop_allowed_from_a_plain_callback(self):
+        # A callback is not a task, so nothing is entered and a nested loop is
+        # still (questionably) allowed -- this must not regress.
+        results = []
+
+        def callback():
+            previous = asyncio.events._get_running_loop()
+            asyncio.events._set_running_loop(None)
+            nested = asyncio.new_event_loop()
+            try:
+                results.append(nested.run_until_complete(inner()))
+            finally:
+                nested.close()
+                asyncio.events._set_running_loop(previous)
+
+        async def inner():
+            return 'inner'
+
+        loop = asyncio.new_event_loop()
+        self.addCleanup(loop.close)
+        loop.call_soon(callback)
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        self.assertEqual(results, ['inner'])
+
+    def test_get_running_task_survives_hidden_running_loop(self):
+        seen = []
+
+        async def outer():
+            task = asyncio.current_task()
+            previous = self._hide_running_loop()
+            try:
+                seen.append(asyncio.tasks._get_running_task() is task)
+            finally:
+                asyncio.events._set_running_loop(previous)
+
+        self.assertIsNone(asyncio.tasks._get_running_task())
+        asyncio.run(outer())
+        self.assertEqual(seen, [True])
+        self.assertIsNone(asyncio.tasks._get_running_task())
+
+
 class BaseLoopSockSendfileTests(test_utils.TestCase):
 
     DATA = b"12345abcde" * 16 * 1024  # 160 KiB

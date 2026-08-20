@@ -1583,6 +1583,29 @@ _asyncio__get_running_loop(PyObject *module, PyObject *Py_UNUSED(ignored))
     return _asyncio__get_running_loop_impl(module);
 }
 
+PyDoc_STRVAR(_asyncio__get_running_task__doc__,
+"_get_running_task($module, /)\n"
+"--\n"
+"\n"
+"Return the task currently being executed by this thread, or None.\n"
+"\n"
+"This is a low-level function intended to be used by event loops.  Unlike\n"
+"current_task() it does not need a running event loop, so it can be used to\n"
+"detect a task that is still entered after the running-loop marker has been\n"
+"cleared.  This function is thread-specific.");
+
+#define _ASYNCIO__GET_RUNNING_TASK_METHODDEF    \
+    {"_get_running_task", (PyCFunction)_asyncio__get_running_task, METH_NOARGS, _asyncio__get_running_task__doc__},
+
+static PyObject *
+_asyncio__get_running_task_impl(PyObject *module);
+
+static PyObject *
+_asyncio__get_running_task(PyObject *module, PyObject *Py_UNUSED(ignored))
+{
+    return _asyncio__get_running_task_impl(module);
+}
+
 PyDoc_STRVAR(_asyncio__set_running_loop__doc__,
 "_set_running_loop($module, loop, /)\n"
 "--\n"
@@ -2257,4 +2280,4 @@ _asyncio_future_discard_from_awaited_by(PyObject *module, PyObject *const *args,
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=6a0d02bd421248aa input=a9049054013a1b77]*/
+/*[clinic end generated code: output=5b91d69ea809c134 input=a9049054013a1b77]*/

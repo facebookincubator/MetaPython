@@ -1,0 +1,8 @@
+:mod:`asyncio`: starting an event loop on a thread that is already executing a
+task now raises :exc:`RuntimeError` instead of blocking forever. Since the
+current task is tracked per thread rather than per event loop, a nested loop
+cannot step any task while an outer task is entered, so the nested task stayed
+pending and the nested :meth:`~asyncio.loop.run_forever` or
+:meth:`~asyncio.loop.run_until_complete` never returned. Add
+``_asyncio._get_running_task()``, which reports the entered task even when the
+running loop marker has been cleared.

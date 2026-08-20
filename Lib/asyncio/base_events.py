@@ -633,6 +633,21 @@ class BaseEventLoop(events.AbstractEventLoop):
         if events._get_running_loop() is not None:
             raise RuntimeError(
                 'Cannot run the event loop while another loop is running')
+        # A task entered on this thread means an event loop is driving it
+        # further up the stack, even if the running loop marker has been
+        # cleared -- the "sync-over-async" bridge trick.  Since the current
+        # task is tracked per thread rather than per loop, running a nested
+        # loop here would make every task step on it fail to enter, leaving
+        # the nested task pending forever.  Refuse instead of hanging.
+        running_task = tasks._get_running_task()
+        if running_task is not None:
+            raise RuntimeError(
+                f'Cannot run the event loop while task {running_task!r} is '
+                'being executed on this thread. asyncio tracks the current '
+                'task per thread, so clearing the running loop marker does '
+                'not make a nested event loop safe. Await the coroutine '
+                'instead of running it, or run it on another thread with '
+                'asyncio.to_thread() or loop.run_in_executor().')
 
     def _run_forever_setup(self):
         """Prepare the run loop to process events.
