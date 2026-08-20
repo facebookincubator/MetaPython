@@ -18,13 +18,13 @@
 /*--start constants--*/
 #define PY_MAJOR_VERSION        3
 #define PY_MINOR_VERSION        12
-#define PY_MICRO_VERSION        13
+#define PY_MICRO_VERSION        14
 #define PY_RELEASE_LEVEL        PY_RELEASE_LEVEL_FINAL
 #define PY_RELEASE_SERIAL       0
 
 /* Version as a string */
 // START META PATCH (append `+meta` to version string)
-#define PY_VERSION              "3.12.13+meta"
+#define PY_VERSION              "3.12.14+meta"
 // END META PATCH
 /*--end constants--*/
 
