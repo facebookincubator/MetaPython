@@ -6,6 +6,7 @@
 #include "pycore_code.h"          // stats
 #include "pycore_frame.h"
 #include "pycore_object.h"        // _PyObject_GC_UNTRACK()
+#include "pycore_pystate.h"       // _PyThreadState_GET()
 #include "opcode.h"
 
 int
@@ -161,6 +162,12 @@ _PyFrame_ClearExceptCode(_PyInterpreterFrame *frame)
 PyFunctionObject *
 _PyFrame_ReifyFrame(_PyInterpreterFrame *frame)
 {
+    // Profilers can reach this from a signal handler on a thread that has
+    // released the GIL, where there's no thread state to reify with.
+    if (_PyThreadState_GET() == NULL) {
+        return NULL;
+    }
+
     PyObject *exc = PyErr_GetRaisedException();
 
      // Tracing this allocation can throw off tracemalloc expectations
