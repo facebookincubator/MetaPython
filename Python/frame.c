@@ -149,6 +149,12 @@ _PyFrame_ClearExceptCode(_PyInterpreterFrame *frame)
 int
 _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame)
 {
+    // Profilers can reach this from a signal handler on a thread that has
+    // released the GIL, where there's no thread state to reify with.
+    if (PyThreadState_GetUnchecked() == NULL) {
+        return 0;
+    }
+
     PyObject *executor = PyStackRef_AsPyObjectBorrow(frame->f_executable);
     if (PyUnstable_JITExecutable_Check(executor)) {
         PyUnstable_PyJitExecutable *jit_exec = (PyUnstable_PyJitExecutable *)executor;
