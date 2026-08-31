@@ -676,9 +676,9 @@ codegen_enter_scope(compiler *c, identifier name, int scope_type,
     if (scope_type == COMPILE_SCOPE_MODULE) {
         loc.lineno = 0;
     }
-    ADDOP_I(c, loc, RESUME, RESUME_AT_FUNC_START);
+    ADDOP_I_IN_SCOPE(c, loc, RESUME, RESUME_AT_FUNC_START);
     if (scope_type == COMPILE_SCOPE_MODULE) {
-        ADDOP(c, loc, ANNOTATIONS_PLACEHOLDER);
+        ADDOP_IN_SCOPE(c, loc, ANNOTATIONS_PLACEHOLDER);
     }
     return SUCCESS;
 }
@@ -717,10 +717,11 @@ codegen_setup_annotations_scope(compiler *c, location loc,
 }
 
 static int
-codegen_leave_annotations_scope(compiler *c, location loc)
+codegen_finish_annotations_scope(compiler *c, location loc)
 {
     ADDOP_IN_SCOPE(c, loc, RETURN_VALUE);
     PyCodeObject *co = _PyCompile_OptimizeAndAssemble(c, 1);
+    _PyCompile_ExitScope(c);
     if (co == NULL) {
         return ERROR;
     }
@@ -754,7 +755,6 @@ codegen_leave_annotations_scope(compiler *c, location loc)
     }
     Py_SETREF(co->co_localsplusnames, new_names);
 
-    _PyCompile_ExitScope(c);
     int ret = codegen_make_closure(c, loc, co, 0);
     Py_DECREF(co);
     RETURN_IF_ERROR(ret);
@@ -854,7 +854,7 @@ codegen_process_deferred_annotations(compiler *c, location loc)
     Py_DECREF(deferred_anno);
     Py_DECREF(conditional_annotation_indices);
 
-    RETURN_IF_ERROR(codegen_leave_annotations_scope(c, loc));
+    RETURN_IF_ERROR(codegen_finish_annotations_scope(c, loc));
     RETURN_IF_ERROR(codegen_nameop(
         c, loc,
         ste->ste_type == ClassBlock ? &_Py_ID(__annotate_func__) : &_Py_ID(__annotate__),
@@ -1160,7 +1160,7 @@ codegen_function_annotations(compiler *c, location loc,
             c, codegen_annotations_in_scope(c, loc, args, returns, &annotations_len)
         );
         ADDOP_I_IN_SCOPE(c, loc, BUILD_MAP, annotations_len);
-        RETURN_IF_ERROR(codegen_leave_annotations_scope(c, loc));
+        RETURN_IF_ERROR(codegen_finish_annotations_scope(c, loc));
         return MAKE_FUNCTION_ANNOTATE;
     }
     else {
