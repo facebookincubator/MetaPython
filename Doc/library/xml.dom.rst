@@ -153,6 +153,11 @@ Objects in the DOM
 
 The definitive documentation for the DOM is the DOM specification from the W3C.
 
+The names documented in this section are DOM interfaces.
+With the exception of :class:`Node` and the exception classes,
+they are not provided by the :mod:`!xml.dom` module itself,
+but by concrete DOM implementations, such as :mod:`xml.dom.minidom`.
+
 Note that DOM attributes may also be manipulated as nodes instead of as simple
 strings.  It is fairly rare that you must do this, however, so this usage is not
 yet documented.
@@ -461,7 +466,7 @@ for each node type are:
 .. method:: Node.insertBefore(newChild, refChild)
 
    Insert a new child node before an existing child.  It must be the case that
-   *refChild* is a child of this node; if not, :exc:`ValueError` is raised.
+   *refChild* is a child of this node; if not, :exc:`NotFoundErr` is raised.
    *newChild* is returned. If *refChild* is ``None``, it inserts *newChild* at the
    end of the children's list.
 
@@ -469,7 +474,7 @@ for each node type are:
 .. method:: Node.removeChild(oldChild)
 
    Remove a child node.  *oldChild* must be a child of this node; if not,
-   :exc:`ValueError` is raised.  *oldChild* is returned on success.  If *oldChild*
+   :exc:`NotFoundErr` is raised.  *oldChild* is returned on success.  If *oldChild*
    will not be used further, its :meth:`~xml.dom.minidom.Node.unlink` method
    should be called.
 
@@ -477,7 +482,7 @@ for each node type are:
 .. method:: Node.replaceChild(newChild, oldChild)
 
    Replace an existing node with a new node. It must be the case that  *oldChild*
-   is a child of this node; if not, :exc:`ValueError` is raised.
+   is a child of this node; if not, :exc:`NotFoundErr` is raised.
 
 
 .. method:: Node.normalize()
@@ -826,8 +831,7 @@ of that class.
 
 .. method:: Element.removeAttribute(name)
 
-   Remove an attribute by name.  If there is no matching attribute, a
-   :exc:`NotFoundErr` is raised.
+   Remove an attribute by name.
 
 
 .. method:: Element.removeAttributeNode(oldAttr)
@@ -838,8 +842,7 @@ of that class.
 
 .. method:: Element.removeAttributeNS(namespaceURI, localName)
 
-   Remove an attribute by name.  Note that it uses a localName, not a qname.  No
-   exception is raised if there is no matching attribute.
+   Remove an attribute by name.  Note that it uses a localName, not a qname.
 
 
 .. method:: Element.setAttribute(name, value)
