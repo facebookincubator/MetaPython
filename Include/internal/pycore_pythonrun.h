@@ -42,7 +42,7 @@ extern PyObject* _PyRun_SimpleString(
 #if (defined(Py_DEBUG) \
      || defined(_Py_ADDRESS_SANITIZER) \
      || defined(_Py_THREAD_SANITIZER))
-#  define _PyOS_LOG2_STACK_MARGIN 12
+#  define _PyOS_LOG2_STACK_MARGIN 15
 #else
 #  define _PyOS_LOG2_STACK_MARGIN 11
 #endif
@@ -66,4 +66,3 @@ extern PyObject* _PyRun_SimpleString(
 }
 #endif
 #endif  // !Py_INTERNAL_PYTHONRUN_H
-
