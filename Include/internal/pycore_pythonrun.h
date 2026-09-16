@@ -39,10 +39,10 @@ extern PyObject* _PyRun_SimpleString(
  * no two calls to check recursion depth are more than this far
  * apart. In practice, that means it must be larger than the C
  * stack consumption of PyEval_EvalDefault */
-#if (defined(Py_DEBUG) \
-     || defined(_Py_ADDRESS_SANITIZER) \
-     || defined(_Py_THREAD_SANITIZER))
+#if defined(_Py_ADDRESS_SANITIZER)
 #  define _PyOS_LOG2_STACK_MARGIN 15
+#elif defined(Py_DEBUG) || defined(_Py_THREAD_SANITIZER)
+#  define _PyOS_LOG2_STACK_MARGIN 12
 #else
 #  define _PyOS_LOG2_STACK_MARGIN 11
 #endif
