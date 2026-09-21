@@ -4924,7 +4924,7 @@ fi
 # checks for library functions
 AC_CHECK_FUNCS([ \
   accept4 alarm bind_textdomain_codeset chmod chown clock close_range confstr \
-  copy_file_range ctermid dup dup3 execv explicit_bzero explicit_memset \
+  copy_file_range ctermid dup execv explicit_bzero explicit_memset \
   faccessat fchmod fchmodat fchown fchownat fdopendir fdwalk fexecve \
   fork fork1 fpathconf fstatat ftime ftruncate futimens futimes futimesat \
   gai_strerror getegid getentropy geteuid getgid getgrgid getgrgid_r \
@@ -4934,7 +4934,7 @@ AC_CHECK_FUNCS([ \
   getspnam getuid getwd if_nameindex initgroups kill killpg lchown linkat \
   lockf lstat lutimes madvise mbrtowc memrchr mkdirat mkfifo mkfifoat \
   mknod mknodat mktime mmap mremap nice openat opendir pathconf pause pipe \
-  pipe2 plock poll posix_fadvise posix_fallocate posix_spawn posix_spawnp \
+  plock poll posix_fadvise posix_fallocate posix_spawn posix_spawnp \
   pread preadv preadv2 pthread_condattr_setclock pthread_init pthread_kill \
   pwrite pwritev pwritev2 readlink readlinkat readv realpath renameat \
   rtpSpawn sched_get_priority_max sched_rr_get_interval sched_setaffinity \
@@ -4954,6 +4954,11 @@ AC_CHECK_FUNCS([ \
 # returns an error.
 if test "$MACHDEP" != linux; then
   AC_CHECK_FUNCS([lchmod])
+fi
+
+# dup3 and pipe2 were introduced in macOS 27 and lack runtime availability checks.
+if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "Darwin"; then
+  AC_CHECK_FUNCS([dup3 pipe2])
 fi
 
 AC_CHECK_DECL([dirfd],
