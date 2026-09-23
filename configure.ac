@@ -73,6 +73,12 @@ AC_DEFUN([PY_CHECK_FUNC],
   AS_VAR_POPDEF([py_define])
 ])
 
+dnl PY_CHECK_FUNC_PRIVATE(FUNCTION, [INCLUDES], [AC_DEFINE-VAR])
+dnl Similar to PY_CHECK_FUNC but define macro _Py_HAVE_xxx instead of HAVE_xxx
+AC_DEFUN([PY_CHECK_FUNC_PRIVATE],
+[ PY_CHECK_FUNC([$1], [$2], m4_ifblank([$3], [[_Py_HAVE_]m4_toupper($1)], [$3]))
+])
+
 dnl PY_CHECK_LIB(LIBRARY, FUNCTION, [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND], [OTHER-LIBRARIES])
 dnl Like AC_CHECK_LIB() but does not modify LIBS
 AC_DEFUN([PY_CHECK_LIB],
@@ -3986,7 +3992,7 @@ if test "$py_have_iconv" = yes; then
     ])
   ])
   if test "$ac_cv_have_iconv" != no; then
-    AC_DEFINE([HAVE_ICONV], [1],
+    AC_DEFINE([_Py_HAVE_ICONV], [1],
               [Define if you have a working iconv() function.])
     if test "$ac_cv_have_iconv" = -liconv; then
       LIBS="-liconv $LIBS"
@@ -6549,7 +6555,13 @@ AC_CHECK_FUNCS(
   [AC_MSG_ERROR([Python requires C99 compatible libm])]
 )
 
-AC_CHECK_FUNCS_ONCE(acospi asinpi atanpi atan2pi cospi sinpi tanpi)
+PY_CHECK_FUNC_PRIVATE([acospi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([asinpi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([atanpi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([atan2pi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([cospi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([sinpi], [@%:@include <math.h>])
+PY_CHECK_FUNC_PRIVATE([tanpi], [@%:@include <math.h>])
 LIBS=$LIBS_SAVE
 
 dnl For multiprocessing module, check that sem_open
