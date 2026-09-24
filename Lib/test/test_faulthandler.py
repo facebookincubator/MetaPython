@@ -530,6 +530,30 @@ class FaultHandlerTests(unittest.TestCase):
         self.assertEqual(trace, expected)
         self.assertEqual(exitcode, 0)
 
+    def test_dump_traceback_consecutive_shims(self):
+        # A finalizer that runs while a frame called from C is being popped
+        # sees two shim frames in a row.
+        code = """
+            import faulthandler
+
+            class D:
+                def __del__(self):
+                    faulthandler.dump_traceback(all_threads=False)
+
+            def f(_):
+                d = D()
+
+            list(map(f, [0]))
+            """
+        expected = [
+            'Stack (most recent call first):',
+            '  File "<string>", line 5 in __del__',
+            '  File "<string>", line 10 in <module>',
+        ]
+        trace, exitcode = self.get_output(code)
+        self.assertEqual(trace, expected)
+        self.assertEqual(exitcode, 0)
+
     def check_dump_traceback_threads(self, filename):
         """
         Call explicitly dump_traceback(all_threads=True) and check the output.

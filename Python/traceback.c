@@ -1252,7 +1252,10 @@ done:
 static void
 dump_frame(int fd, _PyInterpreterFrame *frame)
 {
-    assert(frame->owner != FRAME_OWNED_BY_CSTACK);
+    if (frame->owner == FRAME_OWNED_BY_CSTACK) {
+        /* Ignore trampoline frame */
+        return;
+    }
 
     PyCodeObject *code = frame->f_code;
     PUTS(fd, "  File ");
@@ -1327,17 +1330,6 @@ dump_traceback(int fd, PyThreadState *tstate, int write_header)
 
     unsigned int depth = 0;
     while (1) {
-        if (frame->owner == FRAME_OWNED_BY_CSTACK) {
-            /* Trampoline frame */
-            frame = frame->previous;
-            if (frame == NULL) {
-                break;
-            }
-
-            /* Can't have more than one shim frame in a row */
-            assert(frame->owner != FRAME_OWNED_BY_CSTACK);
-        }
-
         if (MAX_FRAME_DEPTH <= depth) {
             PUTS(fd, "  ...\n");
             break;
