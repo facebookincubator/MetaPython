@@ -170,6 +170,7 @@ def main(del_exitfunc=False):
                     ).start()
 
     while True:
+        request = None
         try:
             if exit_now:
                 try:
@@ -180,9 +181,9 @@ def main(del_exitfunc=False):
             try:
                 request = rpc.request_queue.get(block=True, timeout=0.05)
             except queue.Empty:
-                request = None
                 # Issue 32207: calling handle_tk_events here adds spurious
                 # queue.Empty traceback to event handling exceptions.
+                pass
             if request:
                 seq, (method, args, kwargs) = request
                 ret = method(*args, **kwargs)
@@ -192,6 +193,10 @@ def main(del_exitfunc=False):
         except KeyboardInterrupt:
             if quitting:
                 exit_now = True
+            elif request:
+                # Interrupted while executing a request, as when debugging.
+                print_exception()
+                rpc.response_queue.put((seq, None))
             continue
         except SystemExit:
             capture_warnings(False)
