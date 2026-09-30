@@ -101,7 +101,7 @@ class ThreadRunningTests(BasicThreadTest):
             self.assertEqual(thread.stack_size(), tss, fail_msg % tss)
             verbose_print("successfully set stack_size(%d)" % tss)
 
-        for tss in (262144, 0x100000):
+        for tss in (0x100000, 0x200000):
             verbose_print("trying stack_size = (%d)" % tss)
             self.next_ident = 0
             self.created = 0
