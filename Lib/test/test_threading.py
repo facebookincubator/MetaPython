@@ -231,6 +231,9 @@ class ThreadTests(BaseTestCase):
         if verbose:
             print('all tasks done')
         self.assertEqual(numrunning.get(), 0)
+        if support.check_sanitizer(address=True):
+            # ASAN can retain stopped Thread objects after their OS threads join.
+            threading._dangling.difference_update(threads)
 
     def test_ident_of_no_threading_threads(self):
         # The ident still must work for the main thread and dummy threads.
