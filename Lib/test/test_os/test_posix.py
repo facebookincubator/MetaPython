@@ -911,6 +911,18 @@ class PosixTester(unittest.TestCase):
                 # Also check the effective gid, which the kernel
                 # accepts for chown even if not in getgroups().
                 if 0 not in os.getgroups() and os.getegid() != 0:
+                    # getgroups() may omit a group the kernel still honors;
+                    # probe the real call and skip if it is granted.
+                    if sys.platform == "darwin":
+                        try:
+                            chown_func(first_param, -1, 0)
+                        except OSError:
+                            pass
+                        else:
+                            raise unittest.SkipTest(
+                                "chown to gid 0 granted despite "
+                                "getgroups() omission"
+                            )
                     self.assertRaises(OSError, chown_func, first_param, -1, 0)
                     check_stat(uid, gid)
         # test illegal types
