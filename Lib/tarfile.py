@@ -779,6 +779,13 @@ def _get_filtered_attrs(member, dest_path, for_data=True):
         # For example, 'C:/foo' on Windows.
         raise AbsolutePathError(member)
     # Ensure we stay in the destination
+    if '..' in name.replace(os.sep, '/').split('/'):
+        # Directories are created from the name as given, so a name that
+        # leaves the destination part-way through would create them
+        # outside it even if the resolved path stays inside.
+        normalized = os.path.normpath(name)
+        if normalized != name:
+            name = new_attrs['name'] = normalized
     target_path = os.path.realpath(os.path.join(dest_path, name),
                                    strict=os.path.ALLOW_MISSING)
     if os.path.commonpath([target_path, dest_path]) != dest_path:
@@ -2658,7 +2665,11 @@ class TarFile(object):
                 return
             else:
                 if os.path.exists(tarinfo._link_target):
-                    os.link(tarinfo._link_target, targetpath)
+                    # Resolve the target so the hard link points to the file
+                    # itself. Otherwise os.link() may duplicate a symlink to a
+                    # shallower location, where it's relative target escapes the
+                    # destination directory. (CVE-2026-82049)
+                    os.link(os.path.realpath(tarinfo._link_target), targetpath)
                     return
         except symlink_exception:
             keyerror_to_extracterror = True
@@ -2680,9 +2691,11 @@ class TarFile(object):
                     "makelink_with_filter: if filter_function is not None, "
                     + "extraction_root must also not be None")
             try:
-                filter_function(
+                filtered = filter_function(
                     unfiltered.replace(name=tarinfo.name, deep=False),
                     extraction_root)
+                if filtered is None:
+                    return
                 filtered = filter_function(unfiltered, extraction_root)
             except _FILTER_ERRORS as cause:
                 raise LinkFallbackError(tarinfo, unfiltered.name) from cause
