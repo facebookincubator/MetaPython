@@ -496,11 +496,13 @@ struct _py_func_state {
 
 /* For now we hard-code this to a value for which we are confident
    all the static builtin types will fit (for all builds). */
-#if defined(META_PYTHON) && (defined(MS_WINDOWS) || defined(_Py_TIER2))
-/* MetaPython's extra builtin types overflow 200 slots in Windows JIT builds.
-   This sizes PyInterpreterState, so keep 200 elsewhere: changing it breaks
-   extensions built against a deployed runtime's internal headers. MS_WINDOWS
-   is checked because PCbuild defines _Py_TIER2 for pythoncore only. */
+#if defined(META_PYTHON) && defined(_Py_TIER2)
+/* MetaPython's extra builtin types overflow 200 slots once Tier 2 adds
+   PyUnstable_JITExecutable_Type.  This constant sizes PyInterpreterState, so
+   builds that link a separately deployed runtime (platform010 on Linux,
+   c:/tools/meta-python on Windows) have to keep the 200 those runtimes were
+   built with.  PCbuild applies _Py_TIER2 to both pythoncore and
+   _testinternalcapi, the only Windows binaries that share PyInterpreterState. */
 #define _Py_MAX_MANAGED_STATIC_BUILTIN_TYPES 220
 #else
 #define _Py_MAX_MANAGED_STATIC_BUILTIN_TYPES 200
