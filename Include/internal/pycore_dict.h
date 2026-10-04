@@ -122,7 +122,6 @@ extern Py_ssize_t _Py_dict_lookup(PyDictObject *mp, PyObject *key, Py_hash_t has
 #ifdef META_PYTHON
 /* _Py_dict_lookup_keep_lazy() is the same as _Py_dict_lookup(), but keeps lazy objects unresolved */
 extern Py_ssize_t _Py_dict_lookup_keep_lazy(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr);
-extern int _PyDict_GetItemRefKeepLazy(PyObject *, PyObject *, PyObject **);
 #endif
 
 extern Py_ssize_t _Py_dict_lookup_threadsafe(PyDictObject *mp, PyObject *key, Py_hash_t hash, PyObject **value_addr);

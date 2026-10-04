@@ -496,7 +496,15 @@ struct _py_func_state {
 
 /* For now we hard-code this to a value for which we are confident
    all the static builtin types will fit (for all builds). */
+#if defined(META_PYTHON) && (defined(MS_WINDOWS) || defined(_Py_TIER2))
+/* MetaPython's extra builtin types overflow 200 slots in Windows JIT builds.
+   This sizes PyInterpreterState, so keep 200 elsewhere: changing it breaks
+   extensions built against a deployed runtime's internal headers. MS_WINDOWS
+   is checked because PCbuild defines _Py_TIER2 for pythoncore only. */
+#define _Py_MAX_MANAGED_STATIC_BUILTIN_TYPES 220
+#else
 #define _Py_MAX_MANAGED_STATIC_BUILTIN_TYPES 200
+#endif
 #define _Py_MAX_MANAGED_STATIC_EXT_TYPES 10
 #define _Py_MAX_MANAGED_STATIC_TYPES \
     (_Py_MAX_MANAGED_STATIC_BUILTIN_TYPES + _Py_MAX_MANAGED_STATIC_EXT_TYPES)
