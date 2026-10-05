@@ -4467,6 +4467,43 @@ _lazy_state_add(PyThreadState *tstate, PyObject *state_dict, PyObject *lazy_impo
     return long_value;
 }
 
+// Code that runs in the middle of resolving a `from X import name` lazy import
+// (a weakref callback or finalizer fired by an allocation, say) can read the
+// same lazy global again on this thread. If X is fully imported and holds a
+// concrete value for `name`, that is the answer, and reporting a cycle would
+// be wrong. Anything else keeps the cycle error: the import machinery itself
+// relies on it, e.g. _handle_fromlist() probing a lazy submodule attribute.
+// Returns a new reference, or NULL without an exception set.
+static PyObject *
+_lazy_import_loaded_value(PyThreadState *tstate, PyLazyImportObject *lz)
+{
+    if (lz->lz_attr == NULL || !PyUnicode_Check(lz->lz_attr)) {
+        return NULL;
+    }
+    PyObject *exc = _PyErr_GetRaisedException(tstate);
+    PyObject *value = NULL;
+    PyObject *mod = import_get_module(tstate, lz->lz_from);
+    if (mod != NULL && PyModule_Check(mod)) {
+        PyObject *spec;
+        int rc = PyObject_GetOptionalAttr(mod, &_Py_ID(__spec__), &spec);
+        if (rc > 0) {
+            rc = _PyModuleSpec_IsInitializing(spec);
+            Py_DECREF(spec);
+        }
+        if (rc == 0) {
+            PyObject *dict = PyModule_GetDict(mod);
+            if (_PyDict_GetItemRefKeepLazy(dict, lz->lz_attr, &value) > 0
+                && PyLazyImport_CheckExact(value))
+            {
+                Py_CLEAR(value);
+            }
+        }
+    }
+    Py_XDECREF(mod);
+    _PyErr_SetRaisedException(tstate, exc);
+    return value;
+}
+
 PyObject *
 _PyImport_LoadLazyImportTstate(PyThreadState *tstate, PyObject *lazy_import, int full)
 {
@@ -4484,6 +4521,10 @@ _PyImport_LoadLazyImportTstate(PyThreadState *tstate, PyObject *lazy_import, int
         return NULL;
     }
     if (lvalue > 1) {
+        obj = _lazy_import_loaded_value(tstate, lz);
+        if (obj != NULL) {
+            goto ok;
+        }
         PyObject *name = _PyLazyImport_GetName(lazy_import);
         PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R "
                                                 "(most likely due to a circular import)",
