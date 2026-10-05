@@ -2086,6 +2086,8 @@ struct _Ci_PyGCImplListNode {
 };
 
 static _Ci_PyGCImplListNode *gc_impl_head;
+// Interpreters with their own GIL create and destroy GC states concurrently.
+static PyMutex gc_impl_mutex;
 
 static _Ci_PyGCImplListNode *
 Ci_find_gc_impl_node(GCState *gc_state)
@@ -2103,10 +2105,12 @@ _Ci_PyGC_SetImpl(GCState *gc_state, _Ci_PyGCImpl *impl)
 {
     _Ci_PyGCImpl *old_gc_impl = NULL;
 
+    PyMutex_LockFlags(&gc_impl_mutex, _Py_LOCK_DONT_DETACH);
     _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
     if (node == NULL) {
         node = PyMem_RawCalloc(1, sizeof(_Ci_PyGCImplListNode));
         if (node == NULL) {
+            PyMutex_Unlock(&gc_impl_mutex);
             PyErr_SetString(PyExc_MemoryError, "out of memory");
             return NULL;
         }
@@ -2122,6 +2126,7 @@ _Ci_PyGC_SetImpl(GCState *gc_state, _Ci_PyGCImpl *impl)
 
     node->gc_state = gc_state;
     node->gc_impl = impl;
+    PyMutex_Unlock(&gc_impl_mutex);
 
     return old_gc_impl;
 }
@@ -2129,8 +2134,11 @@ _Ci_PyGC_SetImpl(GCState *gc_state, _Ci_PyGCImpl *impl)
 _Ci_PyGCImpl *
 _Ci_PyGC_GetImpl(GCState *gc_state)
 {
+    PyMutex_LockFlags(&gc_impl_mutex, _Py_LOCK_DONT_DETACH);
     _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
-    return node->gc_impl;
+    _Ci_PyGCImpl *impl = node->gc_impl;
+    PyMutex_Unlock(&gc_impl_mutex);
+    return impl;
 }
 
 static void
@@ -2143,10 +2151,9 @@ _Ci_PyGCImpl_Fini(GCState *gc_state)
 #  endif
 #endif
 {
+    PyMutex_LockFlags(&gc_impl_mutex, _Py_LOCK_DONT_DETACH);
     _Ci_PyGCImplListNode *node = Ci_find_gc_impl_node(gc_state);
     assert(node != NULL);
-
-    node->gc_impl->finalize(node->gc_impl);
 
     if (node->prev != NULL) {
         node->prev->next = node->next;
@@ -2157,7 +2164,9 @@ _Ci_PyGCImpl_Fini(GCState *gc_state)
     if (gc_impl_head == node) {
         gc_impl_head = node->next;
     }
+    PyMutex_Unlock(&gc_impl_mutex);
 
+    node->gc_impl->finalize(node->gc_impl);
     PyMem_RawFree(node);
 }
 
