@@ -41,6 +41,9 @@ jobs:
           ./python -m test --multiprocess 0 --timeout 4500 --verbose2 --verbose3
 
   windows:
+    # MetaPython's extra JIT type exceeds CPython's managed static builtin
+    # limit, and raising the limit changes PyInterpreterState's layout.
+    if: false
     name: ${{ matrix.target }} (${{ matrix.debug && 'Debug' || 'Release' }})
 
     runs-on: ${{ matrix.runner }}
