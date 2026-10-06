@@ -927,7 +927,7 @@ _PyModuleSpec_GetFileOrigin(PyObject *spec, PyObject **p_origin)
     return 1;
 }
 
-int
+Py_NO_INLINE int
 _PyModule_IsPossiblyShadowing(PyObject *origin)
 {
     // origin must be a unicode subtype
