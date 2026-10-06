@@ -40,49 +40,6 @@ jobs:
         run: |
           ./python -m test --multiprocess 0 --timeout 4500 --verbose2 --verbose3
 
-  windows:
-    # MetaPython's extra JIT type exceeds CPython's managed static builtin
-    # limit, and raising the limit changes PyInterpreterState's layout.
-    if: false
-    name: ${{ matrix.target }} (${{ matrix.debug && 'Debug' || 'Release' }})
-
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - i686-pc-windows-msvc/msvc
-          - x86_64-pc-windows-msvc/msvc
-          - aarch64-pc-windows-msvc/msvc
-        debug:
-          - true
-          - false
-        include:
-          - target: i686-pc-windows-msvc/msvc
-            architecture: Win32
-            runner: windows-2022
-          - target: x86_64-pc-windows-msvc/msvc
-            architecture: x64
-            runner: windows-2022
-          - target: aarch64-pc-windows-msvc/msvc
-            architecture: ARM64
-            runner: windows-11-arm
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      # PCbuild downloads LLVM automatically:
-      - name: Build
-        run: |
-          ./PCbuild/build.bat --experimental-jit ${{ matrix.debug && '-d' || '' }} -p ${{ matrix.architecture }}
-      - name: Test
-        run: |
-          ./PCbuild/rt.bat ${{ matrix.debug && '-d' || '' }} -p ${{ matrix.architecture }} -q --multiprocess 0 --timeout 4500 --verbose2 --verbose3
-
   macos:
     name: ${{ matrix.target }} (${{ matrix.debug && 'Debug' || 'Release' }})
 
