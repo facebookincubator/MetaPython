@@ -1175,6 +1175,7 @@ LDFLAGS
 LIBS
 CPPFLAGS
 CPP
+CXX
 PROFILE_TASK
 BOLT_COMMON_FLAGS
 BOLT_INSTRUMENT_FLAGS
@@ -2033,6 +2034,7 @@ Some influential environment variables:
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
+  CXX         C++ compiler command
   PROFILE_TASK
               Python args for PGO generation task
   BOLT_COMMON_FLAGS
@@ -14151,8 +14153,6 @@ then :
 printf "%s\n" "$withval" >&6; }
 BASECFLAGS="-fsanitize=address -fno-omit-frame-pointer $BASECFLAGS"
 LDFLAGS="-fsanitize=address $LDFLAGS"
-# ASan works by controlling memory allocation, our own malloc interferes.
-with_pymalloc="no"
 
 else case e in #(
   e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -14227,11 +14227,6 @@ else case e in #(
 esac
 fi
 
-# HWASan works by controlling memory allocation, our own malloc interferes,
-# so disable it by default, but allow --with-pymalloc to override.
-if test -z "$with_pymalloc"; then
-  with_pymalloc="no"
-fi
 
 else case e in #(
   e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -14293,8 +14288,6 @@ else case e in #(
 esac
 fi
 
-# MSan works by controlling memory allocation, our own malloc interferes.
-with_pymalloc="no"
 
 else case e in #(
   e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
