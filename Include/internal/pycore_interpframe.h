@@ -19,14 +19,28 @@ extern "C" {
 
 #ifdef META_PYTHON
 
+// Weak so that extensions using the inline helpers below still link and load
+// against runtimes that predate this symbol; the check is then always false.
 #ifndef WIN32
 __attribute__((weak))
 #endif
-PyAPI_DATA(PyTypeObject) PyUnstable_JITExecutable_Type;
+PyAPI_FUNC(void) PyUnstable_JITExecutable_Dealloc(PyObject *self);
 
-#define PyUnstable_JITExecutable_Check(op) Py_IS_TYPE((op), &PyUnstable_JITExecutable_Type)
+// The JIT executable type is a per-interpreter heap type, so instances are
+// identified by their deallocator rather than by type pointer. This keeps the
+// check usable without a thread state (e.g. from profilers and faulthandler).
+//
+// Extensions that must load into runtimes built with and without this symbol
+// may define their own check before including this header.
+#ifndef PyUnstable_JITExecutable_Check
+#define PyUnstable_JITExecutable_Check(op) \
+    (Py_TYPE(op)->tp_dealloc == PyUnstable_JITExecutable_Dealloc)
+#endif
 
 PyAPI_FUNC(PyObject *) PyUnstable_MakeJITExecutable(_PyFrame_Reifier reifier, PyCodeObject *code, PyObject *state);
+
+extern int _PyJITExecutable_InitType(PyInterpreterState *interp);
+extern void _PyJITExecutable_FiniType(PyInterpreterState *interp);
 
 PyAPI_FUNC(int) _PyFrame_InitializeExternalFrame(_PyInterpreterFrame *frame);
 
@@ -53,7 +67,7 @@ static inline PyCodeObject *_PyFrame_GetCode(_PyInterpreterFrame *f) {
     assert(!PyStackRef_IsNull(f->f_executable));
     PyObject *executable = PyStackRef_AsPyObjectBorrow(f->f_executable);
 #ifdef META_PYTHON
-    if (PyUnstable_JITExecutable_Check(executable)) {
+    if (!PyCode_Check(executable)) {
         return ((PyUnstable_PyJitExecutable *)executable)->je_code;
     }
 #endif

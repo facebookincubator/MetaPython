@@ -4,6 +4,7 @@
 #include "pycore_frame.h"         // _PyFrame_New_NoTrack()
 #include "pycore_interpframe.h"   // _PyFrame_GetCode()
 #include "pycore_genobject.h"     // _PyGen_GetGeneratorFromFrame()
+#include "pycore_pystate.h"       // _PyInterpreterState_GET()
 #include "pycore_stackref.h"      // _Py_VISIT_STACKREF()
 
 
@@ -206,6 +207,7 @@ static int
 jitexecutable_traverse(PyObject *self, visitproc visit, void *arg)
 {
     PyUnstable_PyJitExecutable *o = (PyUnstable_PyJitExecutable *)self;
+    Py_VISIT(Py_TYPE(self));
     Py_VISIT(o->je_code);
     Py_VISIT(o->je_state);
     return 0;
@@ -220,27 +222,49 @@ jitexecutable_clear(PyObject *self)
     return 0;
 }
 
-static void
-jitexecutable_dealloc(PyObject *self)
+void
+PyUnstable_JITExecutable_Dealloc(PyObject *self)
 {
     PyUnstable_PyJitExecutable *o = (PyUnstable_PyJitExecutable *)self;
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
-    Py_DECREF(o->je_code);
+    Py_XDECREF(o->je_code);
     Py_XDECREF(o->je_state);
-    Py_TYPE(self)->tp_free(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
-PyTypeObject PyUnstable_JITExecutable_Type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    .tp_name = "jit_executable",
-    .tp_basicsize = sizeof(PyUnstable_PyJitExecutable),
-    .tp_dealloc = jitexecutable_dealloc,
-    .tp_traverse = jitexecutable_traverse,
-    .tp_clear = jitexecutable_clear,
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE | Py_TPFLAGS_HAVE_GC,
-    .tp_alloc = PyType_GenericAlloc,
-    .tp_free = PyObject_GC_Del,
+static PyType_Slot jitexecutable_slots[] = {
+    {Py_tp_dealloc, PyUnstable_JITExecutable_Dealloc},
+    {Py_tp_traverse, jitexecutable_traverse},
+    {Py_tp_clear, jitexecutable_clear},
+    {0, NULL},
 };
+
+static PyType_Spec jitexecutable_spec = {
+    .name = "builtins.jit_executable",
+    .basicsize = sizeof(PyUnstable_PyJitExecutable),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
+    .slots = jitexecutable_slots,
+};
+
+int
+_PyJITExecutable_InitType(PyInterpreterState *interp)
+{
+    PyTypeObject *tp = (PyTypeObject *)PyType_FromSpec(&jitexecutable_spec);
+    if (tp == NULL) {
+        return -1;
+    }
+    interp->jit_executable_type = tp;
+    return 0;
+}
+
+void
+_PyJITExecutable_FiniType(PyInterpreterState *interp)
+{
+    Py_CLEAR(interp->jit_executable_type);
+}
 
 PyObject *
 PyUnstable_MakeJITExecutable(_PyFrame_Reifier reifier, PyCodeObject *code, PyObject *state)
@@ -253,8 +277,8 @@ PyUnstable_MakeJITExecutable(_PyFrame_Reifier reifier, PyCodeObject *code, PyObj
         return NULL;
     }
 
-    PyUnstable_PyJitExecutable *jit_exec = PyObject_GC_New(PyUnstable_PyJitExecutable,
-                                                           &PyUnstable_JITExecutable_Type);
+    PyTypeObject *tp = _PyInterpreterState_GET()->jit_executable_type;
+    PyUnstable_PyJitExecutable *jit_exec = PyObject_GC_New(PyUnstable_PyJitExecutable, tp);
     if (jit_exec == NULL) {
         return NULL;
     }
@@ -276,7 +300,8 @@ const PyTypeObject *const PyUnstable_ExecutableKinds[PyUnstable_EXECUTABLE_KINDS
     [PyUnstable_EXECUTABLE_KIND_BUILTIN_FUNCTION] = &PyMethod_Type,
     [PyUnstable_EXECUTABLE_KIND_METHOD_DESCRIPTOR] = &PyMethodDescr_Type,
 #ifdef META_PYTHON
-    [PyUnstable_EXECUTABLE_KIND_JIT] = &PyUnstable_JITExecutable_Type,
+    // PyUnstable_EXECUTABLE_KIND_JIT has no entry because its type is
+    // per-interpreter; use PyUnstable_JITExecutable_Check() instead.
 #endif
     [PyUnstable_EXECUTABLE_KINDS] = NULL,
 };

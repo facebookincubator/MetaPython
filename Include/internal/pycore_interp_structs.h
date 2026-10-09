@@ -1007,6 +1007,9 @@ struct _is {
     PyObject *eager_imports;
     PyObject *lazy_modules;
     PyMutex lazy_imports_mutex;
+
+    // Lightweight frames
+    PyTypeObject *jit_executable_type;
 #endif
 };
 

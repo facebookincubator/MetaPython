@@ -2530,9 +2530,6 @@ static PyTypeObject* static_types[] = {
     &PyTuple_Type,
     &PyUnicodeIter_Type,
     &PyUnicode_Type,
-#ifdef META_PYTHON
-    &PyUnstable_JITExecutable_Type,
-#endif
     &PyWrapperDescr_Type,
     &PyZip_Type,
     &Py_GenericAliasType,
@@ -2614,6 +2611,12 @@ _PyTypes_InitTypes(PyInterpreterState *interp)
     if (_Py_initialize_generic(interp) < 0) {
         return _PyStatus_ERR("Can't initialize generic types");
     }
+
+#ifdef META_PYTHON
+    if (_PyJITExecutable_InitType(interp) < 0) {
+        return _PyStatus_ERR("Can't initialize JIT executable type");
+    }
+#endif
 
     return _PyStatus_OK();
 }
