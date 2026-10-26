@@ -96,9 +96,9 @@ PyAPI_FUNC(int) _PyDict_GetItemRefKeepLazy(PyObject *mp, PyObject *key, PyObject
     V(DEALLOCATED)
 
 typedef enum {
-    #define PY_DEF_EVENT(EVENT) PyDict_EVENT_##EVENT,
-    PY_FOREACH_DICT_EVENT(PY_DEF_EVENT)
-    #undef PY_DEF_EVENT
+    #define _Py_DEF_EVENT(EVENT) PyDict_EVENT_##EVENT,
+    PY_FOREACH_DICT_EVENT(_Py_DEF_EVENT)
+    #undef _Py_DEF_EVENT
 } PyDict_WatchEvent;
 
 // Callback to be invoked when a watched dict is cleared, dealloced, or modified.
