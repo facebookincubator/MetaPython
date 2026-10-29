@@ -169,10 +169,13 @@ class ExecutorTest:
     def test_no_stale_references(self):
         # Issue #16284: check that the executors don't unnecessarily hang onto
         # references.
+        # Resolve the lazy import now: the weakref callback below can run
+        # mid-resolution, where reading it raises ImportCycleError.
+        gil_disabled = Py_GIL_DISABLED
         my_object = MyObject()
         my_object_collected = threading.Event()
         def set_event():
-            if Py_GIL_DISABLED:
+            if gil_disabled:
                 # gh-117688 Avoid deadlock by setting the event in a
                 # background thread. The current thread may be in the middle
                 # of the my_object_collected.wait() call, which holds locks
@@ -185,7 +188,7 @@ class ExecutorTest:
         self.executor.submit(my_object.my_method)
         del my_object
 
-        if Py_GIL_DISABLED:
+        if gil_disabled:
             # Due to biased reference counting, my_object might only be
             # deallocated while the thread that created it runs -- if the
             # thread is paused waiting on an event, it may not merge the
