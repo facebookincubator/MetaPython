@@ -2609,12 +2609,13 @@ class PyUsabilityTest(UsabilityTest, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self._previous_int_limit = sys.get_int_max_str_digits()
+        # Restore via addCleanup rather than tearDown: cleanups run after
+        # tearDown, so a test that itself saves/restores the limit with
+        # addCleanup would otherwise resurrect the 7000 set here.
+        self.addCleanup(
+            sys.set_int_max_str_digits, sys.get_int_max_str_digits()
+        )
         sys.set_int_max_str_digits(7000)
-
-    def tearDown(self):
-        sys.set_int_max_str_digits(self._previous_int_limit)
-        super().tearDown()
 
     def test_helper__is_less_than_pow10a_use_str_slow_path(self):
         # Test the "slow" path of _is_less_than_pow10a_use_str().
@@ -4843,12 +4844,14 @@ class PyCoverage(Coverage, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self._previous_int_limit = sys.get_int_max_str_digits()
+        # Restore via addCleanup rather than tearDown: cleanups run after
+        # tearDown, so a test that itself saves/restores the limit with
+        # addCleanup (e.g. test_remainder_near) would otherwise resurrect
+        # the 7000 set here, leaking it to later tests in the process.
+        self.addCleanup(
+            sys.set_int_max_str_digits, sys.get_int_max_str_digits()
+        )
         sys.set_int_max_str_digits(7000)
-
-    def tearDown(self):
-        sys.set_int_max_str_digits(self._previous_int_limit)
-        super().tearDown()
 
 class PyFunctionality(unittest.TestCase):
     """Extra functionality in decimal.py"""
