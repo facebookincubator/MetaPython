@@ -1477,7 +1477,13 @@ class HandlerTests(unittest.TestCase):
             # Change response for subsequent connection
             conn.__class__.fakedata = b"HTTP/1.1 200 OK\r\n\r\nHello!"
         http.client.HTTPConnection.request = request
-        fp = urllib.request.urlopen("http://python.org/path")
+        # Use a proxy-free opener: urlopen()'s global opener is built
+        # from getproxies(), which on macOS falls back to the system
+        # proxy when no *_proxy env vars are set.
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({})
+        )
+        fp = opener.open("http://python.org/path")
         self.assertEqual(fp.geturl(), "http://python.org/path?query")
 
     def test_redirect_encoding(self):
@@ -1497,7 +1503,13 @@ class HandlerTests(unittest.TestCase):
                 return result
         self.unset_proxy_env()
         handler = Handler()
-        opener = urllib.request.build_opener(handler)
+        # ProxyHandler({}) instead of the default ProxyHandler(): the
+        # default reads getproxies(), which on macOS falls back to the
+        # system proxy when no *_proxy env vars are set, and would send
+        # the request in absolute-URL form.
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), handler
+        )
         tests = (
             (b'/p\xC3\xA5-dansk/', b'/p%C3%A5-dansk/'),
             (b'/spaced%20path/', b'/spaced%20path/'),
