@@ -1489,6 +1489,9 @@ class HandlerTests(unittest.TestCase):
         env = self.enterContext(os_helper.EnvironmentVarGuard())
         env.unset("http_proxy", "https_proxy", "all_proxy", "no_proxy",
                   "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY")
+        if sys.platform == "darwin":
+            self.enterContext(mock.patch.object(
+                urllib.request, "getproxies_macosx_sysconf", return_value={}))
 
     def test_redirect_no_path(self):
         # Issue 14132: Relative redirect strips original path
