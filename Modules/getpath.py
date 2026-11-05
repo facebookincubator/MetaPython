@@ -62,8 +62,9 @@
 #   If None, will be calculated from real_executable or executable
 # py_setpath        -- [in] argument provided to Py_SetPath
 #   If None, 'prefix' and 'exec_prefix' may be updated in config
-# library           -- [in, optional] path of dylib/DLL/so
-#   Only used for locating ._pth files
+# library           -- [in, optional] path of dylib/DLL/so, or of the
+#   executable that libpython is linked into
+#   Used for locating ._pth files, and the prefix if the executable can't
 # winreg            -- [in, optional] the winreg module (only on Windows)
 
 # ******************************************************************************
@@ -610,6 +611,19 @@ else:
     # Detect prefix by searching from our executable location for the stdlib_dir
     if STDLIB_SUBDIR and STDLIB_LANDMARKS and executable_dir and not prefix:
         prefix = search_up(executable_dir, *STDLIB_LANDMARKS)
+        if prefix and not stdlib_dir:
+            stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
+
+
+    # Detect prefix by searching from our runtime library for the stdlib_dir.
+    # This only runs when the executable location did not lead to a prefix,
+    # e.g. a launcher that sets argv[0] to a path outside the installation,
+    # or an application embedding libpython from a relocated prefix.
+    # Only an absolute path is used: a relative loader path may have been
+    # resolved against an earlier working directory.
+    if (STDLIB_SUBDIR and STDLIB_LANDMARKS and not prefix
+            and library and os_name != 'nt' and isabs(library)):
+        prefix = search_up(dirname(abspath(library)), *STDLIB_LANDMARKS)
         if prefix and not stdlib_dir:
             stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
 

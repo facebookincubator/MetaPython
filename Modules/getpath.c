@@ -804,6 +804,45 @@ progname_to_dict(PyObject *dict, const char *key)
 }
 
 
+#if defined(__linux__) && !defined(Py_ENABLE_SHARED) && !defined(WITH_NEXT_FRAMEWORK)
+/* Return the path of the file mapped at addr, as recorded by the kernel in
+   /proc/self/maps: absolute, with symlinks resolved. The result must be
+   released with PyMem_RawFree(). */
+static char *
+mapped_file_path(const void *addr)
+{
+    FILE *maps = fopen("/proc/self/maps", "re");
+    if (maps == NULL) {
+        return NULL;
+    }
+    char *line = NULL;
+    size_t size = 0;
+    char *result = NULL;
+    while (getline(&line, &size, maps) != -1) {
+        /* "low-high perms offset dev inode   path" */
+        unsigned long low, high;
+        int path_offset = -1;
+        if (sscanf(line, "%lx-%lx %*s %*s %*s %*s %n",
+                   &low, &high, &path_offset) != 2 || path_offset < 0) {
+            continue;
+        }
+        if ((uintptr_t)addr < low || (uintptr_t)addr >= high) {
+            continue;
+        }
+        char *path = line + path_offset;
+        path[strcspn(path, "\n")] = '\0';
+        if (path[0] == '/') {
+            result = _PyMem_RawStrdup(path);
+        }
+        break;
+    }
+    free(line);
+    fclose(maps);
+    return result;
+}
+#endif
+
+
 /* Add the runtime library's path to the dict */
 static int
 library_to_dict(PyObject *dict, const char *key)
@@ -825,6 +864,17 @@ library_to_dict(PyObject *dict, const char *key)
         return decode_to_dict(dict, key, libpython_info.dli_fname);
     }
 #endif
+
+#elif defined(__linux__)
+    /* libpython is linked into the executable, or into an application that
+       embeds it. dladdr() reports argv[0] for the main program, which may be
+       relative or name some other file, so ask the kernel instead. */
+    char *path = mapped_file_path((const void *)&Py_Initialize);
+    if (path != NULL) {
+        int res = decode_to_dict(dict, key, path);
+        PyMem_RawFree(path);
+        return res;
+    }
 #endif
 
     return PyDict_SetItemString(dict, key, Py_None) == 0;

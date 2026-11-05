@@ -817,6 +817,17 @@ class BasicTest(BaseTest):
         ld_library_path = sysconfig.get_config_var("LIBDIR")
         if not ld_library_path or sysconfig.is_python_build():
             ld_library_path = os.path.abspath(os.path.dirname(sys.executable))
+        if (sysconfig.get_config_var('Py_ENABLE_SHARED')
+                and sys.platform != 'cygwin'):
+            # Startup can search relative to libpython before the executable.
+            # Load a copy from the temporary installation to select its
+            # standard library.
+            shared_libdir = os.path.join(non_installed_dir, 'lib')
+            os.makedirs(shared_libdir, exist_ok=True)
+            instsoname = sysconfig.get_config_var('INSTSONAME')
+            shutil.copy2(os.path.join(ld_library_path, instsoname),
+                         os.path.join(shared_libdir, instsoname))
+            ld_library_path = os.pathsep.join((shared_libdir, ld_library_path))
         if sys.platform == 'darwin':
             ld_library_path_env = "DYLD_LIBRARY_PATH"
         else:
@@ -833,7 +844,9 @@ class BasicTest(BaseTest):
         # correct zip path in pythonpath.
         target_python = os.path.join(self.env_dir, self.bindir, python_exe)
         cmd = [target_python, '-S', '-c', 'import sys; print(sys.path)']
-        out, err = check_output(cmd)
+        with EnvironmentVarGuard() as env:
+            env[ld_library_path_env] = ld_library_path
+            out, err = check_output(cmd)
         self.assertTrue(zip_landmark.encode() in out)
 
     @requireVenvCreate
