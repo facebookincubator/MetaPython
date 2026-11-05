@@ -384,6 +384,39 @@ class MockGetPathTests(unittest.TestCase):
                 )
                 self.assertEqual(expected, getpath(ns, expected))
 
+    def test_buck_link_tree_posix(self):
+        "Test a launcher started by its resolved path, beside its link tree"
+        cases = {
+            'static library': '/out/app',
+            'shared library elsewhere': '/install/lib/libpython9.8.so',
+        }
+        for os_name, (name, library) in itertools.product(
+                ('posix', 'darwin'), cases.items()):
+            with self.subTest(os_name=os_name, case=name):
+                ns = MockPosixNamespace(
+                    os_name=os_name,
+                    PREFIX='/configured',
+                    EXEC_PREFIX='/configured',
+                    argv0='/out/app',
+                    library=library,
+                )
+                ns.add_known_xfile('/out/app')
+                for prefix in ('/out/app#link-tree/runtime', '/install'):
+                    ns.add_known_file(f'{prefix}/lib/python9.8/os.py')
+                    ns.add_known_dir(f'{prefix}/lib/python9.8/lib-dynload')
+                expected = dict(
+                    executable='/out/app',
+                    base_executable='/out/app',
+                    prefix='/out/app#link-tree/runtime',
+                    exec_prefix='/out/app#link-tree/runtime',
+                    module_search_paths=[
+                        '/out/app#link-tree/runtime/lib/python98.zip',
+                        '/out/app#link-tree/runtime/lib/python9.8',
+                        '/out/app#link-tree/runtime/lib/python9.8/lib-dynload',
+                    ],
+                )
+                self.assertEqual(expected, getpath(ns, expected))
+
     def test_shared_library_home_posix(self):
         ns = MockPosixNamespace(
             PREFIX='/configured',

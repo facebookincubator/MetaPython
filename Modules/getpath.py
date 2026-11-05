@@ -626,6 +626,19 @@ else:
             stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
 
 
+    # Detect prefix from a Buck link tree beside the resolved executable. Buck
+    # links a bundled launcher <exe> into <exe>#link-tree/runtime/bin, and
+    # macOS starts a #!<that link> script's interpreter with only the resolved
+    # path, so no other location leads back to the runtime.
+    if (STDLIB_SUBDIR and STDLIB_LANDMARKS and not prefix
+            and os_name != 'nt' and real_executable):
+        link_tree_runtime = joinpath(f'{real_executable}#link-tree', 'runtime')
+        if any(isfile(joinpath(link_tree_runtime, f)) for f in STDLIB_LANDMARKS):
+            prefix = link_tree_runtime
+            if not stdlib_dir:
+                stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
+
+
     # Detect prefix by searching from our runtime library for the stdlib_dir.
     # This only runs when the executable location did not lead to a prefix,
     # e.g. a launcher that sets argv[0] to a path outside the installation,
