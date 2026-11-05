@@ -1,4 +1,5 @@
 import copy
+import itertools
 import ntpath
 import pathlib
 import posixpath
@@ -346,6 +347,42 @@ class MockGetPathTests(unittest.TestCase):
             ],
         )
         self.assertEqual(expected, getpath(ns, expected))
+
+    def test_symlink_from_outside_installation_posix(self):
+        "Test a launcher linked into the installation from outside it"
+        cases = {
+            'no library': None,
+            'static library': '/out/app',
+            'shared library elsewhere': '/install/lib/libpython9.8.so',
+        }
+        for os_name, (name, library) in itertools.product(
+                ('posix', 'darwin'), cases.items()):
+            with self.subTest(os_name=os_name, case=name):
+                ns = MockPosixNamespace(
+                    os_name=os_name,
+                    PREFIX='/configured',
+                    EXEC_PREFIX='/configured',
+                    argv0='/runtime/bin/app',
+                    library=library,
+                )
+                ns.add_known_xfile('/out/app')
+                ns.add_known_xfile('/runtime/bin/app')
+                ns.add_known_link('/runtime/bin/app', '/out/app')
+                for prefix in ('/runtime', '/install'):
+                    ns.add_known_file(f'{prefix}/lib/python9.8/os.py')
+                    ns.add_known_dir(f'{prefix}/lib/python9.8/lib-dynload')
+                expected = dict(
+                    executable='/runtime/bin/app',
+                    base_executable='/runtime/bin/app',
+                    prefix='/runtime',
+                    exec_prefix='/runtime',
+                    module_search_paths=[
+                        '/runtime/lib/python98.zip',
+                        '/runtime/lib/python9.8',
+                        '/runtime/lib/python9.8/lib-dynload',
+                    ],
+                )
+                self.assertEqual(expected, getpath(ns, expected))
 
     def test_shared_library_home_posix(self):
         ns = MockPosixNamespace(

@@ -615,6 +615,17 @@ else:
             stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
 
 
+    # Detect prefix by searching from the executable's location as invoked,
+    # before resolving symlinks. Buck links a bundled runtime's launcher into
+    # runtime/bin from outside the runtime, so only this location leads to it.
+    if (STDLIB_SUBDIR and STDLIB_LANDMARKS and not prefix
+            and os_name != 'nt' and executable and isabs(executable)
+            and dirname(executable) != executable_dir):
+        prefix = search_up(dirname(executable), *STDLIB_LANDMARKS)
+        if prefix and not stdlib_dir:
+            stdlib_dir = joinpath(prefix, STDLIB_SUBDIR)
+
+
     # Detect prefix by searching from our runtime library for the stdlib_dir.
     # This only runs when the executable location did not lead to a prefix,
     # e.g. a launcher that sets argv[0] to a path outside the installation,
