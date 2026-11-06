@@ -1102,7 +1102,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         self.check_global_config(configs)
         return configs
 
-    @unittest.skipIf(support.check_bolt_optimized, "segfaults on BOLT instrumented binaries")
+    @unittest.skipIf(support.check_bolt_optimized(), "segfaults on BOLT instrumented binaries")
     def test_init_default_config(self):
         self.check_all_configs("test_init_initialize_config", api=API_COMPAT)
 
@@ -1203,7 +1203,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         self.check_all_configs("test_init_from_config", config, preconfig,
                                api=API_COMPAT)
 
-    @unittest.skipIf(support.check_bolt_optimized, "segfaults on BOLT instrumented binaries")
+    @unittest.skipIf(support.check_bolt_optimized(), "segfaults on BOLT instrumented binaries")
     def test_init_compat_env(self):
         preconfig = {
             'allocator': ALLOCATOR_FOR_CONFIG,
@@ -1238,7 +1238,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         self.check_all_configs("test_init_compat_env", config, preconfig,
                                api=API_COMPAT)
 
-    @unittest.skipIf(support.check_bolt_optimized, "segfaults on BOLT instrumented binaries")
+    @unittest.skipIf(support.check_bolt_optimized(), "segfaults on BOLT instrumented binaries")
     def test_init_python_env(self):
         preconfig = {
             'allocator': ALLOCATOR_FOR_CONFIG,
@@ -1918,7 +1918,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         self.check_all_configs("test_init_warnoptions", config, preconfig,
                                api=API_PYTHON)
 
-    @unittest.skipIf(support.check_bolt_optimized, "segfaults on BOLT instrumented binaries")
+    @unittest.skipIf(support.check_bolt_optimized(), "segfaults on BOLT instrumented binaries")
     def test_initconfig_api(self):
         preconfig = {
             'configure_locale': True,
@@ -1935,6 +1935,9 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         # See gh-126255 for more information
         self.check_all_configs("test_initconfig_api", config, preconfig,
                                api=API_ISOLATED, ignore_stderr=True)
+
+    def test_initconfig_set_errors(self):
+        self.run_embedded_interpreter("test_initconfig_set_errors")
 
     def test_initconfig_get_api(self):
         self.run_embedded_interpreter("test_initconfig_get_api")
