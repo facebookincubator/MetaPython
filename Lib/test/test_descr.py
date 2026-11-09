@@ -4181,6 +4181,28 @@ class ClassPropertiesAndMethods(unittest.TestCase):
                                'expected 1 or 2 arguments, got 3',
                                int().__rpow__, 1, 2, 3)
 
+    def test_setattr_slot_update_error(self):
+        # An error raised while updating the slots of subclasses must be
+        # propagated by the attribute assignment.
+        class K:
+            def __hash__(self):
+                return hash('__repr__')
+            def __eq__(self, other):
+                raise ZeroDivisionError
+
+        class A:
+            pass
+
+        with self.assertWarns(RuntimeWarning):
+            B = type('B', (A,), {K(): 1})
+        if support.Py_GIL_DISABLED:
+            # The slot update skips non-str keys without comparing them.
+            A.__repr__ = lambda self: 'A'
+        else:
+            with self.assertRaises(ZeroDivisionError):
+                A.__repr__ = lambda self: 'A'
+        self.assertEqual(repr(A()), 'A')
+
     def test_mutable_bases(self):
         # Testing mutable bases...
 
@@ -4370,6 +4392,22 @@ class ClassPropertiesAndMethods(unittest.TestCase):
         self.assertEqual(repr(b), '<A_tuple>')
         B_tuple.__bases__ = (tuple,)
         self.assertEqual(repr(b), '(1, 2)')
+
+    @support.cpython_only
+    def test_assign_bases_tuple_identity(self):
+        class A:
+            pass
+
+        class B(A):
+            pass
+
+        bases = (A,)
+        B.__bases__ = bases
+        self.assertEqual(B.__bases__, bases)
+        if support.Py_GIL_DISABLED:
+            self.assertIsNot(B.__bases__, bases)
+        else:
+            self.assertIs(B.__bases__, bases)
 
     def test_assign_bases_many_subclasses(self):
         # This is intended to check that typeobject.c:queue_slot_update() can
@@ -5097,6 +5135,47 @@ class ClassPropertiesAndMethods(unittest.TestCase):
 
         with self.assertWarnsRegex(RuntimeWarning, 'MyClass'):
             MyClass = meta('MyClass', (), {})
+
+    @support.cpython_only
+    def test_str_subclass_namespace_key_identity(self):
+        class Key(str):
+            pass
+
+        key = Key('other')
+        C = type('C', (), {key: 1})
+        stored_key = next(iter(C.__dict__))
+        self.assertEqual(stored_key, key)
+        self.assertEqual(C.other, 1)
+        if support.Py_GIL_DISABLED:
+            self.assertIs(type(stored_key), str)
+        else:
+            self.assertIs(stored_key, key)
+
+    @unittest.skipUnless(support.Py_GIL_DISABLED, 'needs a free-threaded build')
+    def test_str_subclass_namespace_keys(self):
+        # Keys of the class namespace that are str subclasses are copied
+        # to exact str in the type's __dict__, like type.__setattr__ does.
+        class Key(str):
+            def __hash__(self):
+                # Collide with the slot name assigned below.
+                return hash('__hash__')
+            def __eq__(self, other):
+                # Must not be called by type dict lookups.
+                raise AssertionError('Key.__eq__ called')
+
+        ns = {Key('other'): 1, '__repr__': lambda self: 'r', 'c': 2}
+        C = type('C', (), ns)
+        for key in C.__dict__:
+            self.assertIs(type(key), str)
+        self.assertEqual([str(k) for k in ns], list(C.__dict__)[:3])
+        self.assertEqual(repr(C()), 'r')
+        self.assertEqual(C.other, 1)
+        # Lookups and slot updates that hash-collide with 'other' do not
+        # call Key.__eq__.
+        C.__hash__ = None
+        with self.assertRaises(TypeError):
+            hash(C())
+        del C.__hash__
 
     def test_proxy_call(self):
         class FakeStr:
