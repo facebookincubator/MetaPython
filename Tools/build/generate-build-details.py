@@ -63,13 +63,24 @@ def generate_data(schema_version: str) -> collections.defaultdict[str, Any]:
     if '_multiarch' in data['implementation']:
         data['implementation']['_multiarch'] = sysconfig.get_config_var('MULTIARCH')
 
-    data['abi']['flags'] = list(sys.abiflags)
+    data['abi']['flags'] = list(sysconfig.get_config_var('ABIFLAGS') or '')
 
     data['suffixes']['source'] = importlib.machinery.SOURCE_SUFFIXES
     data['suffixes']['bytecode'] = importlib.machinery.BYTECODE_SUFFIXES
     #data['suffixes']['optimized_bytecode'] = importlib.machinery.OPTIMIZED_BYTECODE_SUFFIXES
     #data['suffixes']['debug_bytecode'] = importlib.machinery.DEBUG_BYTECODE_SUFFIXES
-    data['suffixes']['extensions'] = importlib.machinery.EXTENSION_SUFFIXES
+    data['suffixes']['extensions'] = list(importlib.machinery.EXTENSION_SUFFIXES)
+    target_extension_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+    if target_extension_suffix:
+        # Use the target suffix and drop any other platform-specific
+        # (host-derived) suffixes; generic suffixes such as .abi3.so and
+        # .so are platform-independent and are retained wherever they
+        # appear in the host list.
+        data['suffixes']['extensions'] = [target_extension_suffix] + [
+            suffix
+            for suffix in data['suffixes']['extensions']
+            if not suffix.startswith('.cpython-') and suffix != target_extension_suffix
+        ]
 
     LIBDIR = sysconfig.get_config_var('LIBDIR')
     LIBPL = sysconfig.get_config_var('LIBPL')
