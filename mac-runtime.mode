@@ -1,0 +1,3 @@
+--# Exercise bundled CPython 3.12 with the full OpenSSL algorithm profile.
+@fbsource//arvr/mode/mac-arm/dev
+--config=xplat.openssl_profile=fbcode
