@@ -593,6 +593,8 @@ class _Stream:
             else:
                 # Other decompressors have needs_input.
                 # decompress() can buffer data internally.
+                if self.cmp.eof:
+                    break
                 if self.cmp.needs_input:
                     cbuf = self.fileobj.read(self.bufsize)
                     if not cbuf:
@@ -3157,6 +3159,10 @@ open = TarFile.open
 
 def main():
     import argparse
+    import runpy
+
+    # Prevent shadowing stdlib modules from extracted files
+    runpy._remove_sys_path0()
 
     description = 'A simple command-line interface for tarfile module.'
     parser = argparse.ArgumentParser(description=description)
