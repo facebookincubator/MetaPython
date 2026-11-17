@@ -469,6 +469,7 @@ gc_visit_thread_stacks(PyInterpreterState *interp, struct collection_state *stat
                 continue;
             }
 
+            gc_visit_stackref(f->f_funcobj);
             gc_visit_stackref(f->f_executable);
             while (top != f->localsplus) {
                 --top;
@@ -865,6 +866,10 @@ gc_visit_thread_stacks_mark_alive(PyInterpreterState *interp, gc_mark_args_t *ar
             }
 
             _PyStackRef *top = f->stackpointer;
+            if (gc_visit_stackref_mark_alive(args, f->f_funcobj) < 0) {
+                err = -1;
+                goto exit;
+            }
             if (gc_visit_stackref_mark_alive(args, f->f_executable) < 0) {
                 err = -1;
                 goto exit;
@@ -2137,17 +2142,21 @@ gc_collect_internal(PyInterpreterState *interp, struct collection_state *state, 
     gc_visit_heaps(interp, &validate_alive_bits, &state->base);
 #endif
 
+    // The debug output is written with sys.stderr.write(), which may run
+    // Python code, so it is printed below after the world is started.
+    bool debug_print = (interp->gc.debug & _PyGC_DEBUG_COLLECTABLE) != 0;
+
+    // Find weakref callbacks we will honor (but do not call them).
+    find_weakref_callbacks(state);
+    _PyEval_StartTheWorld(interp);
+
     // Print debugging information.
-    if (interp->gc.debug & _PyGC_DEBUG_COLLECTABLE) {
+    if (debug_print) {
         PyObject *op;
         WORKSTACK_FOR_EACH(&state->unreachable, op) {
             debug_cycle("collectable", op);
         }
     }
-
-    // Find weakref callbacks we will honor (but do not call them).
-    find_weakref_callbacks(state);
-    _PyEval_StartTheWorld(interp);
 
     // Deallocate any object from the refcount merge step
     cleanup_worklist(&state->objs_to_decref);
