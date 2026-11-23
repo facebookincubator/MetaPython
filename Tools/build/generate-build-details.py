@@ -116,7 +116,10 @@ def generate_data(schema_version: str) -> collections.defaultdict[str, Any]:
     #data['suffixes']['debug_bytecode'] = importlib.machinery.DEBUG_BYTECODE_SUFFIXES
     extension_suffixes = get_extension_suffixes()
     target_extension_suffix = sysconfig.get_config_var('EXT_SUFFIX')
-    if target_extension_suffix and extension_suffixes:
+    if os.name != 'posix' and target_extension_suffix and extension_suffixes:
+        # On POSIX, get_extension_suffixes() already rebuilds the list from
+        # the target configuration; only substitute the target suffix where
+        # upstream falls back to the host interpreter's EXTENSION_SUFFIXES.
         # Use the target suffix and drop any other platform-specific
         # suffixes; generic suffixes such as .abi3.so and .so are
         # platform-independent and are retained wherever they appear
