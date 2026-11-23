@@ -102,7 +102,6 @@ def generate_data(schema_version: str) -> collections.defaultdict[str, Any]:
     # Fix cross-compilation
     if '_multiarch' in data['implementation']:
         data['implementation']['_multiarch'] = sysconfig.get_config_var('MULTIARCH')
-
     if 'supports_isolated_interpreters' in data['implementation']:
         # Mirrors Python/sysmodule.c.
         data['implementation']['supports_isolated_interpreters'] = (
