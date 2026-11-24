@@ -608,6 +608,73 @@ class TestSelfStackTrace(RemoteInspectionTestBase):
         self.assertEqual(stacks["anext"], ["agen"])
 
     @skip_if_not_supported
+    def test_future_between_tasks(self):
+        # gh-161502
+        from asyncio.tools import build_async_tree
+
+        async def worker(method):
+            return getattr(RemoteUnwinder(os.getpid()), method)()
+
+        async def main(method):
+            parent = asyncio.current_task()
+            parent.set_name("main")
+            future = asyncio.Future()
+            task = asyncio.create_task(worker(method), name="worker")
+            asyncio.future_add_to_awaited_by(task, future)
+            task.add_done_callback(future.set_result)
+            try:
+                await future
+                return task.result(), {
+                    id(parent): [],
+                    id(future): [id(parent)],
+                    id(task): [id(future)],
+                }
+            finally:
+                asyncio.future_discard_from_awaited_by(task, future)
+
+        for method in ("get_all_awaited_by", "get_async_stack_trace"):
+            with self.subTest(method=method):
+                snapshot, expected = asyncio.run(main(method))
+                tree, = build_async_tree(snapshot)
+                rendered = "\n".join(tree)
+                self.assertIn("(T) main", rendered)
+                self.assertIn("(F) Future-", rendered)
+                self.assertIn("(T) worker", rendered)
+                relationships = {
+                    node.task_id: [edge.task_name for edge in node.awaited_by]
+                    for thread in snapshot for node in thread.awaited_by
+                }
+                self.assertEqual(relationships, expected)
+
+    @skip_if_not_supported
+    def test_shared_future_waiter(self):
+        async def main():
+            layers = [[asyncio.current_task()]]
+            for _ in range(14):
+                waiters = [asyncio.Future(), asyncio.Future()]
+                for child in layers[-1]:
+                    for waiter in waiters:
+                        asyncio.future_add_to_awaited_by(child, waiter)
+                        self.addCleanup(asyncio.future_discard_from_awaited_by,
+                                        child, waiter)
+                layers.append(waiters)
+
+            leaf, root = layers[-1][0], layers[0][0]
+            asyncio.future_add_to_awaited_by(leaf, root)
+            self.addCleanup(asyncio.future_discard_from_awaited_by, leaf, root)
+
+            expected_ids = [id(node) for layer in layers for node in layer]
+            unwinder = RemoteUnwinder(os.getpid())
+            for method in (unwinder.get_all_awaited_by,
+                           unwinder.get_async_stack_trace):
+                with self.subTest(method=method.__name__):
+                    ids = [node.task_id for thread in method()
+                           for node in thread.awaited_by]
+                    self.assertCountEqual(ids, expected_ids)
+
+        asyncio.run(main())
+
+    @skip_if_not_supported
     def test_async_generator_running_task_stack(self):
         # gh-159620
         async def agen():
@@ -1275,11 +1342,14 @@ class TestGetStackTrace(RemoteInspectionTestBase):
                     relationships = self._get_awaited_by_relationships(
                         stack_trace
                     )
+                    future_name, = (node.task_name for node in stack_trace[0].awaited_by
+                                    if node.is_future)
                     self.assertEqual(
                         relationships,
                         {
                             "Task-1": set(),
-                            "Task-2": {"Task-1"},
+                            "Task-2": {future_name},
+                            future_name: {"Task-1"},
                         },
                     )
 
@@ -1293,6 +1363,7 @@ class TestGetStackTrace(RemoteInspectionTestBase):
                         coroutine_stacks,
                         {
                             "Task-1": [((script_name, 21, "main", None),)],
+                            future_name: [()],
                             "Task-2": [
                                 (
                                     (script_name, 11, "deep", None),
@@ -1320,7 +1391,8 @@ class TestGetStackTrace(RemoteInspectionTestBase):
                         awaited_by_coroutine_stacks,
                         {
                             "Task-1": [],
-                            "Task-2": [
+                            "Task-2": [(future_name, ())],
+                            future_name: [
                                 ("Task-1", ((script_name, 21, "main", None),))
                             ],
                         },
@@ -1977,6 +2049,84 @@ class TestGetStackTrace(RemoteInspectionTestBase):
         self.assertTrue(this_thread_stack[0].filename.endswith("test_external_inspection.py"))
         self.assertEqual(this_thread_stack[1].funcname, "TestGetStackTrace.test_self_trace")
         self.assertTrue(this_thread_stack[1].filename.endswith("test_external_inspection.py"))
+
+    @skip_if_not_supported
+    @unittest.skipIf(
+        sys.platform == "linux" and not PROCESS_VM_READV_SUPPORTED,
+        "Test only runs on Linux with process_vm_readv support",
+    )
+    def test_empty_native_thread_stack(self):
+        _testcapi = import_module("_testcapi")
+        lock = threading.Lock()
+        lock.acquire()
+        # A built-in callback leaves the C thread's Python stack empty.
+        _testcapi.call_in_temporary_c_thread(lock.acquire, False)
+        try:
+            for cache_frames, native in ((False, False), (False, True),
+                                         (True, False), (True, True)):
+                with self.subTest(cache_frames=cache_frames, native=native):
+                    unwinder = RemoteUnwinder(
+                        os.getpid(), all_threads=True, cache_frames=cache_frames,
+                        native=native,
+                    )
+                    _get_stack_trace_with_retry(
+                        unwinder, condition=lambda trace: len(trace[0].threads) == 2,
+                    )
+                    threads = unwinder.get_stack_trace()[0].threads
+                    native_stack, python_stack = sorted(
+                        (thread.frame_info for thread in threads), key=len,
+                    )
+                    self.assertEqual(native_stack, [])
+                    self.assertEqual(
+                        python_stack[0].funcname,
+                        "TestGetStackTrace.test_empty_native_thread_stack",
+                    )
+        finally:
+            lock.release()
+            _testcapi.join_temporary_c_thread()
+
+    @skip_if_not_supported
+    @unittest.skipIf(
+        sys.platform == "linux" and not PROCESS_VM_READV_SUPPORTED,
+        "Test only runs on Linux with process_vm_readv support",
+    )
+    def test_popping_python_frame_is_not_native(self):
+        script_body = """\
+def leaf(depth):
+    if depth:
+        leaf(depth - 1)
+
+while True:
+        leaf(300)
+"""
+
+        with self._target_process(script_body) as (process, _, _):
+            unwinder = RemoteUnwinder(
+                process.pid, native=True, gc=False, cache_frames=False,
+            )
+            # The unwinder can attach before the main loop starts.
+            _get_stack_trace_with_retry(
+                unwinder,
+                condition=lambda trace: trace[0].threads and any(
+                    frame.funcname == "leaf"
+                    for frame in trace[0].threads[0].frame_info
+                ),
+            )
+            samples = 0
+            for _ in range(10_000):
+                try:
+                    threads = unwinder.get_stack_trace()[0].threads
+                except TRANSIENT_ERRORS:
+                    continue
+                if not threads:
+                    continue
+                frames = threads[0].frame_info
+                names = [frame.funcname for frame in frames]
+                if "leaf" not in names:
+                    continue
+                samples += 1
+                self.assertNotIn(("leaf", "<native>"), zip(names, names[1:]))
+            self.assertGreater(samples, 1000)
 
     @skip_if_not_supported
     @unittest.skipIf(
@@ -4655,6 +4805,37 @@ class TestFrameChainLimits(RemoteInspectionTestBase):
             f"frame chain limit never raised; last transient error: "
             f"{last_error!r}"
         )
+
+    @skip_if_not_supported
+    def test_get_all_awaited_by_at_waiter_limit(self):
+        # gh-161502
+        async def main():
+            task = asyncio.current_task()
+            limit = self.TASK_WAITER_WALK_TASKS - 1
+            for _ in range(limit):
+                future = asyncio.Future()
+                asyncio.future_add_to_awaited_by(task, future)
+                self.addCleanup(asyncio.future_discard_from_awaited_by, task, future)
+
+            release = asyncio.Event()
+            child = asyncio.create_task(release.wait())
+            waiter = asyncio.create_task(asyncio.wait([child]), eager_start=True)
+            unwinder = RemoteUnwinder(os.getpid())
+            snapshot = unwinder.get_all_awaited_by()
+            count = sum(node.is_future for thread in snapshot
+                        for node in thread.awaited_by)
+            self.assertEqual(count, limit)
+
+            extra = asyncio.Future()
+            asyncio.future_add_to_awaited_by(task, extra)
+            self.addCleanup(asyncio.future_discard_from_awaited_by, task, extra)
+            with self.assertRaisesRegex(RuntimeError, "Too many task waiters"):
+                unwinder.get_all_awaited_by()
+
+            release.set()
+            await waiter
+
+        asyncio.run(main())
 
     @skip_if_not_supported
     @unittest.skipIf(
