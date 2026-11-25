@@ -170,7 +170,11 @@ AC_ARG_WITH([build-python],
     dnl Build Python interpreter is used for regeneration and freezing.
     ac_cv_prog_PYTHON_FOR_REGEN=$with_build_python
     PYTHON_FOR_FREEZE="$with_build_python"
-    PYTHON_FOR_BUILD='_PYTHON_PROJECT_BASE=$(abs_builddir) _PYTHON_HOST_PLATFORM=$(_PYTHON_HOST_PLATFORM) PYTHONPATH=$(srcdir)/Lib _PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH) _PYTHON_SYSCONFIGDATA_PATH=$(shell test -f pybuilddir.txt && echo $(abs_builddir)/`cat pybuilddir.txt`) '$with_build_python
+    PYTHON_FOR_BUILD='_PYTHON_PROJECT_BASE=$(abs_builddir) PYTHONPATH=$(srcdir)/Lib _PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_$(ABIFLAGS)_$(MACHDEP)_$(MULTIARCH) _PYTHON_SYSCONFIGDATA_PATH=$(shell test -f pybuilddir.txt && echo $(abs_builddir)/`cat pybuilddir.txt`) '$with_build_python
+    dnl _PYTHON_HOST_PLATFORM is only set when cross compiling.
+    AS_VAR_IF([cross_compiling], [yes],
+      [PYTHON_FOR_BUILD='_PYTHON_HOST_PLATFORM=$(_PYTHON_HOST_PLATFORM) '"$PYTHON_FOR_BUILD"]
+    )
     AC_MSG_RESULT([$with_build_python])
   ], [
     AS_VAR_IF([cross_compiling], [yes],
@@ -181,6 +185,13 @@ AC_ARG_WITH([build-python],
   ]
 )
 AC_SUBST([PYTHON_FOR_BUILD])
+
+# Module import checks must run with the target interpreter on native builds.
+AS_VAR_IF([cross_compiling], [yes],
+  [MODULE_CHECK_COMMAND='$(PYTHON_FOR_BUILD) $(srcdir)/Tools/build/check_extension_modules.py --cross-compiling'],
+  [MODULE_CHECK_COMMAND='$(RUNSHARED) ./$(BUILDPYTHON) -E $(srcdir)/Tools/build/check_extension_modules.py --no-cross-compiling']
+)
+AC_SUBST([MODULE_CHECK_COMMAND])
 
 AC_MSG_CHECKING([for Python interpreter freezing])
 AC_MSG_RESULT([$PYTHON_FOR_FREEZE])
