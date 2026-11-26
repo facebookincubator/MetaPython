@@ -1,6 +1,8 @@
+import sys
 import threading
 import unittest
 
+from test import support
 from test.support import threading_helper
 
 
@@ -66,6 +68,51 @@ class TestDelayedFreeReentrancy(unittest.TestCase):
             new = object()
             C.x = new
             self.assertIs(C.x, new)
+
+
+    @unittest.skipIf(sys._is_gil_enabled(), "requires free-threaded Python")
+    def test_deferred_finalizers_wake_evaluator(self):
+        with support.disable_gc():
+            finalized = []
+            holders = self.queue_finalizers(lambda: finalized.append(None))
+            for h in holders:
+                h.__dict__ = {}
+            self.assertTrue(finalized)
+
+    @unittest.skipIf(sys._is_gil_enabled(), "requires free-threaded Python")
+    def test_finalizer_requeues_deferred_work(self):
+        with support.disable_gc():
+            finalized = []
+            nested = self.queue_finalizers(lambda: finalized.append(None))
+
+            def requeue():
+                for h in nested:
+                    h.__dict__ = {}
+                nested.clear()
+
+            holders = self.queue_finalizers(requeue)
+            for h in holders:
+                h.__dict__ = {}
+            self.assertTrue(finalized)
+
+    @unittest.skipIf(sys._is_gil_enabled(), "requires free-threaded Python")
+    def test_refcount_merge_and_deferred_finalizers(self):
+        with support.disable_gc():
+            merged = []
+
+            class Finalizer:
+                def __del__(self):
+                    merged.append(None)
+
+            objects = [Finalizer() for _ in range(self.ROUNDS)]
+            finalized = []
+            holders = self.queue_finalizers(lambda: finalized.append(None))
+            worker = threading.Thread(target=objects.clear)
+            with threading_helper.start_threads([worker]):
+                for h in holders:
+                    h.__dict__ = {}
+            self.assertEqual(len(merged), self.ROUNDS)
+            self.assertTrue(finalized)
 
 
 if __name__ == "__main__":

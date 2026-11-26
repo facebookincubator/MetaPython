@@ -1270,7 +1270,12 @@ should_advance_qsbr_for_free(struct _qsbr_thread_state *qsbr, size_t size)
     if (size > QSBR_FREE_MEM_LIMIT) {
         qsbr->deferred_count = 0;
         qsbr->deferred_memory = 0;
+        qsbr->should_process = true;
+#ifdef _PY_EVAL_PROCESS_DELAYED_BIT
         _Py_set_eval_breaker_bit(qsbr->tstate, _PY_EVAL_PROCESS_DELAYED_BIT);
+#else
+        _Py_set_eval_breaker_bit(qsbr->tstate, _PY_EVAL_EXPLICIT_MERGE_BIT);
+#endif
         return true;
     }
     qsbr->deferred_count++;
@@ -1279,7 +1284,12 @@ should_advance_qsbr_for_free(struct _qsbr_thread_state *qsbr, size_t size)
             qsbr->deferred_memory > QSBR_FREE_MEM_LIMIT) {
         qsbr->deferred_count = 0;
         qsbr->deferred_memory = 0;
+        qsbr->should_process = true;
+#ifdef _PY_EVAL_PROCESS_DELAYED_BIT
         _Py_set_eval_breaker_bit(qsbr->tstate, _PY_EVAL_PROCESS_DELAYED_BIT);
+#else
+        _Py_set_eval_breaker_bit(qsbr->tstate, _PY_EVAL_EXPLICIT_MERGE_BIT);
+#endif
         return true;
     }
     return false;
@@ -1464,7 +1474,10 @@ _PyMem_ProcessDelayed(PyThreadState *tstate)
     PyInterpreterState *interp = tstate->interp;
     _PyThreadStateImpl *tstate_impl = (_PyThreadStateImpl *)tstate;
 
+    tstate_impl->qsbr->should_process = false;
+#ifdef _PY_EVAL_PROCESS_DELAYED_BIT
     _Py_unset_eval_breaker_bit(tstate, _PY_EVAL_PROCESS_DELAYED_BIT);
+#endif
 
     // Process thread-local work
     process_queue(&tstate_impl->mem_free_queue, tstate_impl, true, NULL, NULL);
