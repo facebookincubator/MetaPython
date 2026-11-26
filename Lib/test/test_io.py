@@ -2230,6 +2230,21 @@ class BufferedRWPairTest(unittest.TestCase):
         self.assertEqual(pair.read(0), b'')
         self.assertEqual(pair.write(b''), 0)
 
+    def test_reinit(self):
+        # gh-162246: Calling __init__() again must release the previous
+        # reader and writer, the writer first so it flushes before the
+        # reader closes a shared raw stream.
+        raw = self.MockRawIO()
+        pair = self.tp(raw, raw)
+        pair.write(b"abc")
+        ref = weakref.ref(raw)
+        pair.__init__(self.MockRawIO(), self.MockRawIO())
+        support.gc_collect()
+        self.assertEqual(raw._write_stack, [b"abc"])
+        del raw
+        support.gc_collect()
+        self.assertIsNone(ref())
+
     def test_detach(self):
         pair = self.tp(self.MockRawIO(), self.MockRawIO())
         self.assertRaises(self.UnsupportedOperation, pair.detach)
@@ -2284,6 +2299,10 @@ class BufferedRWPairTest(unittest.TestCase):
                 self.assertEqual(getattr(pair, method)(data), 5)
                 self.assertEqual(bytes(data), b"abcde")
 
+        # gh-138720: C BufferedRWPair would destruct in a bad order resulting in
+        # an unraisable exception.
+        support.gc_collect()
+
     def test_write(self):
         w = self.MockRawIO()
         pair = self.tp(self.MockRawIO(), w)
@@ -2295,6 +2314,15 @@ class BufferedRWPairTest(unittest.TestCase):
         buffer[:] = b"***"  # Overwrite our copy of the data
         pair.flush()
         self.assertEqual(w._write_stack, [b"abc", b"def"])
+
+    def test_destructor_flushes_shared_stream(self):
+        raw = self.MockRawIO()
+        pair = self.tp(raw, raw)
+        pair.write(b"abc")
+        self.assertEqual(raw._write_stack, [])
+        del pair
+        support.gc_collect()
+        self.assertEqual(raw._write_stack, [b"abc"])
 
     def test_peek(self):
         pair = self.tp(self.BytesIO(b"abcdef"), self.MockRawIO())
@@ -4395,6 +4423,17 @@ class CTextIOWrapperTest(TextIOWrapperTest):
             make_text(DetachOnWrite(self.MockRawIO()))
             wrapper.write('x')
             self.assertRaisesRegex(ValueError, "detached", wrapper.read)
+
+    def test_read_reinitialized_as_write_only(self):
+        class Buffer(self.BytesIO):
+            def read(self, size=-1):
+                stream.__init__(writer, encoding="ascii")
+                return b"a"
+
+        with (self.BufferedWriter(self.BytesIO()) as writer,
+              self.TextIOWrapper(Buffer(), encoding="ascii") as stream):
+            with self.assertRaises(self.UnsupportedOperation):
+                stream.read()
 
     def test_reentrant_detach_during_read(self):
         # gh-157363, gh-157364: The buffer must stay alive until its active
