@@ -31,6 +31,7 @@ Copyright (C) 1994 Steen Lumholt.
 #endif
 
 #include "pycore_long.h"          // _PyLong_IsNegative()
+#include "pycore_pyatomic_ft_wrappers.h" // FT_ATOMIC_LOAD_INT_RELAXED()
 #include "pycore_unicodeobject.h" // _PyUnicode_AsUTF8String
 
 #include <signal.h>               // SIGINT
@@ -382,6 +383,8 @@ typedef struct {
     int threaded; /* True if tcl_platform[threaded] */
     Tcl_ThreadId thread_id;
     int dispatching;
+    int quitting; /* Set by quit() to stop mainloop() */
+    int event_hook; /* True if counted by EnableEventHook() */
     PyObject *trace;
     /* We cannot include tclInt.h, as this is internal.
        So we cache interesting types here. */
@@ -423,9 +426,14 @@ check_tcl_appartment(TkappObject *app)
 /**** Error Handling ****/
 
 static PyObject *Tkinter_TclError;
-static int quitMainLoop = 0;
-static int errorInCmd = 0;
-static PyObject *excInCmd;
+
+/* An exception raised in a Python callback, which should be raised by the
+   event loop (mainloop() or the event hook) that called the callback.
+   Callbacks are only called in the thread of their Tcl interpreter, so it
+   is thread-local. */
+static Tcl_ThreadDataKey excInCmd_key;
+#define excInCmd \
+    (*(PyObject **)Tcl_GetThreadData(&excInCmd_key, sizeof(PyObject *)))
 
 
 static PyObject *Tkapp_UnicodeResult(TkappObject *);
@@ -655,8 +663,8 @@ Tcl_AppInit(Tcl_Interp *interp)
  * `tkMain.c'.
  */
 
-static void EnableEventHook(void); /* Forward */
-static void DisableEventHook(void); /* Forward */
+static void EnableEventHook(TkappObject *); /* Forward */
+static void DisableEventHook(TkappObject *); /* Forward */
 
 static TkappObject *
 Tkapp_New(const char *screenName, const char *className,
@@ -670,6 +678,11 @@ Tkapp_New(const char *screenName, const char *className,
     if (v == NULL)
         return NULL;
 
+    /* Without the GIL, two threads could both free tcl_lock below, and
+       the first-time initialization in Tcl_CreateInterp() is not
+       thread-safe either.  Serialize them. */
+    static PyMutex tcl_create_mutex;
+    PyMutex_Lock(&tcl_create_mutex);
     v->interp = Tcl_CreateInterp();
     v->wantobjects = wantobjects;
 #if TCL_MAJOR_VERSION >= 9
@@ -684,6 +697,7 @@ Tkapp_New(const char *screenName, const char *className,
 
 #ifndef TCL_THREADS
     if (v->threaded) {
+        PyMutex_Unlock(&tcl_create_mutex);
         PyErr_SetString(PyExc_RuntimeError,
                         "Tcl is threaded but _tkinter is not");
         Py_DECREF(v);
@@ -695,6 +709,7 @@ Tkapp_New(const char *screenName, const char *className,
         PyThread_free_lock(tcl_lock);
         tcl_lock = NULL;
     }
+    PyMutex_Unlock(&tcl_create_mutex);
 
     v->OldBooleanType = Tcl_GetObjType("boolean");
     {
@@ -830,7 +845,7 @@ Tkapp_New(const char *screenName, const char *className,
         return (TkappObject *)result;
     }
 
-    EnableEventHook();
+    EnableEventHook(v);
 
     return v;
 }
@@ -2518,8 +2533,7 @@ PythonCmd(ClientData clientData, Tcl_Interp *interp,
     goto done;
 
 error:
-    errorInCmd = 1;
-    excInCmd = PyErr_GetRaisedException();
+    Py_XSETREF(excInCmd, PyErr_GetRaisedException());
 done:
     LEAVE_PYTHON
 
@@ -2757,8 +2771,7 @@ FileHandler(ClientData clientData, int mask)
 
     res = PyObject_CallFunction(func, "Oi", file, mask);
     if (res == NULL) {
-        errorInCmd = 1;
-        excInCmd = PyErr_GetRaisedException();
+        Py_XSETREF(excInCmd, PyErr_GetRaisedException());
     }
     Py_XDECREF(res);
     LEAVE_PYTHON
@@ -2936,8 +2949,7 @@ TimerHandler(ClientData clientData)
     Py_DECREF(v); /* See Tktt_New() */
 
     if (res == NULL) {
-        errorInCmd = 1;
-        excInCmd = PyErr_GetRaisedException();
+        Py_XSETREF(excInCmd, PyErr_GetRaisedException());
     }
     else
         Py_DECREF(res);
@@ -2997,12 +3009,15 @@ _tkinter_tkapp_mainloop_impl(TkappObject *self, int threshold)
     PyThreadState *tstate = PyThreadState_Get();
 
     CHECK_TCL_APPARTMENT(self);
+    /* mainloop() can be nested, the outer mainloop() still dispatches
+       events after the inner one exits. */
+    int dispatching = self->dispatching;
     self->dispatching = 1;
 
-    quitMainLoop = 0;
+    FT_ATOMIC_STORE_INT_RELAXED(self->quitting, 0);
     while (Tk_GetNumMainWindows() > threshold &&
-           !quitMainLoop &&
-           !errorInCmd)
+           !FT_ATOMIC_LOAD_INT_RELAXED(self->quitting) &&
+           excInCmd == NULL)
     {
         int result;
 
@@ -3025,19 +3040,19 @@ _tkinter_tkapp_mainloop_impl(TkappObject *self, int threshold)
         }
 
         if (PyErr_CheckSignals() != 0) {
-            self->dispatching = 0;
+            self->dispatching = dispatching;
             return NULL;
         }
         if (result < 0)
             break;
     }
-    self->dispatching = 0;
-    quitMainLoop = 0;
+    self->dispatching = dispatching;
+    FT_ATOMIC_STORE_INT_RELAXED(self->quitting, 0);
 
-    if (errorInCmd) {
-        errorInCmd = 0;
-        PyErr_SetRaisedException(excInCmd);
+    PyObject *exc = excInCmd;
+    if (exc != NULL) {
         excInCmd = NULL;
+        PyErr_SetRaisedException(exc);
         return NULL;
     }
     Py_RETURN_NONE;
@@ -3063,6 +3078,13 @@ _tkinter_tkapp_dooneevent_impl(TkappObject *self, int flags)
     return PyLong_FromLong(rv);
 }
 
+static int
+QuitEventProc(Tcl_Event *evPtr, int flags)
+{
+    /* Nothing to do: the event only wakes up the event loop. */
+    return 1;
+}
+
 /*[clinic input]
 _tkinter.tkapp.quit
 [clinic start generated code]*/
@@ -3071,7 +3093,21 @@ static PyObject *
 _tkinter_tkapp_quit_impl(TkappObject *self)
 /*[clinic end generated code: output=7f21eeff481f754f input=e03020dc38aff23c]*/
 {
-    quitMainLoop = 1;
+    FT_ATOMIC_STORE_INT_RELAXED(self->quitting, 1);
+    if (self->threaded && self->dispatching &&
+        self->thread_id != Tcl_GetCurrentThread())
+    {
+        /* mainloop() is running in other thread and can wait for an event.
+           Send it an event, so that it checks the flag. */
+        Tcl_Event *ev = (Tcl_Event *)attemptckalloc(sizeof(Tcl_Event));
+        if (ev == NULL) {
+            return PyErr_NoMemory();
+        }
+        memset(ev, 0, sizeof(Tcl_Event));
+        ev->proc = QuitEventProc;
+        Tcl_ThreadQueueEvent(self->thread_id, ev, TCL_QUEUE_TAIL);
+        Tcl_ThreadAlert(self->thread_id);
+    }
     Py_RETURN_NONE;
 }
 
@@ -3219,10 +3255,10 @@ Tkapp_Dealloc(PyObject *op)
         Tcl_DeleteInterp(Tkapp_Interp(self));
         LEAVE_TCL
     }
+    DisableEventHook(self);
     Py_XDECREF(self->trace);
     PyObject_Free(self);
     Py_DECREF(tp);
-    DisableEventHook();
 }
 
 
@@ -3527,6 +3563,10 @@ static PyMethodDef moduleMethods[] =
 };
 
 #ifdef WAIT_FOR_STDIN
+/* The number of Tcl interpreters which use the event hook. */
+static Py_ssize_t event_hook_users = 0;
+static PyMutex event_hook_mutex = {0};
+
 #ifndef MS_WINDOWS
 
 static int stdin_ready = 0;
@@ -3544,8 +3584,6 @@ MyFileProc(void *clientData, int mask)
 }
 #endif
 
-static PyThreadState *event_tstate = NULL;
-
 static int
 EventHook(void)
 {
@@ -3554,10 +3592,18 @@ EventHook(void)
     DWORD type;
 #else
     int tfile;
+#endif
+    /* The hook is called with the GIL released, usually by PyOS_Readline()
+       in the thread which reads the input.  Use the thread state of that
+       thread, not of the thread which created the Tcl interpreter. */
+    PyThreadState *tstate = PyGILState_GetThisThreadState();
+    if (tstate == NULL) {
+        return 0;
+    }
+#ifndef MS_WINDOWS
     stdin_ready = 0;
 #endif
-    PyEval_RestoreThread(event_tstate);
-    errorInCmd = 0;
+    PyEval_RestoreThread(tstate);
 #ifdef MS_WINDOWS
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
     type = GetFileType(hStdin);
@@ -3585,27 +3631,40 @@ EventHook(void)
         else if (type == FILE_TYPE_DISK) {
             break;
         }
+#else
+        if (tcl_lock == NULL) {
+            /* Tcl is threaded and stdin is watched by MyFileProc, so we
+               can wait for an event or input instead of polling. */
+            Py_BEGIN_ALLOW_THREADS
+            tcl_tstate = tstate;
+            result = Tcl_DoOneEvent(0);
+            tcl_tstate = NULL;
+            Py_END_ALLOW_THREADS
+        }
+        else
 #endif
-        Py_BEGIN_ALLOW_THREADS
-        if(tcl_lock)PyThread_acquire_lock(tcl_lock, 1);
-        tcl_tstate = event_tstate;
+        {
+            Py_BEGIN_ALLOW_THREADS
+            if(tcl_lock)PyThread_acquire_lock(tcl_lock, 1);
+            tcl_tstate = tstate;
 
-        result = Tcl_DoOneEvent(TCL_DONT_WAIT);
+            result = Tcl_DoOneEvent(TCL_DONT_WAIT);
 
-        tcl_tstate = NULL;
-        if(tcl_lock)PyThread_release_lock(tcl_lock);
-        if (result == 0)
-            Sleep(Tkinter_busywaitinterval);
-        Py_END_ALLOW_THREADS
+            tcl_tstate = NULL;
+            if(tcl_lock)PyThread_release_lock(tcl_lock);
+            if (result == 0)
+                Sleep(Tkinter_busywaitinterval);
+            Py_END_ALLOW_THREADS
+        }
 
         /* Report an exception raised in a callback, but keep pumping events
            instead of returning to the prompt: without readline there is no
            input waiting on stdin yet, so returning here would block in fgets
            until the user hits enter, freezing later callbacks. */
-        if (errorInCmd) {
-            errorInCmd = 0;
-            PyErr_SetRaisedException(excInCmd);
+        PyObject *exc = excInCmd;
+        if (exc != NULL) {
             excInCmd = NULL;
+            PyErr_SetRaisedException(exc);
             PyErr_Print();
         }
         if (result < 0)
@@ -3622,23 +3681,32 @@ EventHook(void)
 #endif
 
 static void
-EnableEventHook(void)
+EnableEventHook(TkappObject *self)
 {
 #ifdef WAIT_FOR_STDIN
+    PyMutex_Lock(&event_hook_mutex);
+    event_hook_users++;
     if (PyOS_InputHook == NULL) {
-        event_tstate = PyThreadState_Get();
         PyOS_InputHook = EventHook;
     }
+    self->event_hook = 1;
+    PyMutex_Unlock(&event_hook_mutex);
 #endif
 }
 
 static void
-DisableEventHook(void)
+DisableEventHook(TkappObject *self)
 {
 #ifdef WAIT_FOR_STDIN
-    if (Tk_GetNumMainWindows() == 0 && PyOS_InputHook == EventHook) {
+    if (!self->event_hook) {
+        return;
+    }
+    PyMutex_Lock(&event_hook_mutex);
+    self->event_hook = 0;
+    if (--event_hook_users == 0 && PyOS_InputHook == EventHook) {
         PyOS_InputHook = NULL;
     }
+    PyMutex_Unlock(&event_hook_mutex);
 #endif
 }
 
